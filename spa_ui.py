@@ -4,11 +4,12 @@ import numpy as np
 
 from collections import namedtuple
 from PyQt5 import QtWidgets, uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 from string import ascii_lowercase
 
 from shipment_models import ShipmentModel
-
 
 ShipmentListColumns = namedtuple('ShipmentListColumns', 'code st0 st1 st2 st3 st4')
 
@@ -23,6 +24,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.separator = 2
         self.list_columns = ShipmentListColumns('Код', 'st0', 'st1', 'st2', 'st3', 'st4')
         self.map_columns = [''] + list(ascii_lowercase[:self.box_columns])
+        self.font = QFont('Courier New')
 
         # initialize components
         self.status_bar = self.findChild(QtWidgets.QStatusBar, 'status_bar')
@@ -37,23 +39,36 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.pos_from = self.findChild(QtWidgets.QPushButton, 'pos_from')
         self.pos_to = self.findChild(QtWidgets.QPushButton, 'pos_to')
 
-        # setup components
-        # self.list_view.horizontalHeader().setContentsMargins(2, 2, 2, 2)
-        self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-
         # bind actions
         self.load_button.clicked.connect(self.load_list)
         self.work_button.clicked.connect(self.debug_action)
 
         # initialize models for tables
-        self.list_df = pd.DataFrame(0, index=[], columns=list(self.list_columns))
-        self.list_model = ShipmentModel(self.list_df)
+        # self.list_df = pd.DataFrame('0000000T0(00)', index=[3, 4, 5], columns=list(self.list_columns))
+        self.list_df = pd.DataFrame(index=[], columns=list(self.list_columns))
+        self.list_model = ShipmentModel(self.list_df, 'list')
         self.list_view.setModel(self.list_model)
 
-        self.map_df = pd.DataFrame(0, index=[3, 4, 5], columns=self.map_columns)
-        self.map_model = ShipmentModel(self.map_df)
+        # self.map_df = pd.DataFrame('0000000T0(00) 0.55', index=[3, 4, 5], columns=self.map_columns)
+        self.map_df = pd.DataFrame(index=[], columns=self.map_columns)
+        self.map_model = ShipmentModel(self.map_df, 'map')
         self.map_view.setModel(self.map_model)
 
+        # setup components look
+        self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.list_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        # self.list_view.horizontalHeader().setOffset(2)
+        # self.list_view.setContentsMargins(2, 2, 2, 2)
+        self.list_view.horizontalHeader().setMinimumSectionSize(32)
+
+        self.map_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.map_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.map_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.map_view.horizontalHeader().setMinimumSectionSize(32)
+        self.map_view.setFont(self.font)
+        self.map_view.setWordWrap(True)
+
+        # show form
         self.show()
 
     def load_list(self):
