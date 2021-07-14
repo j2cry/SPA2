@@ -44,22 +44,24 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.work_button.clicked.connect(self.debug_action)
 
         # initialize models for tables
-        # self.list_df = pd.DataFrame('0000000T0(00)', index=[3, 4, 5], columns=list(self.list_columns))
-        self.list_df = pd.DataFrame(index=[], columns=list(self.list_columns))
-        self.list_model = ShipmentModel(self.list_df, 'list')
+        # samples_df = pd.DataFrame('0000000T0(00)', index=[3, 4, 5], columns=list(self.list_columns))
+        samples_df = pd.DataFrame(index=[], columns=list(self.list_columns))
+        self.list_model = ShipmentModel(samples_df, 'list')
         self.list_view.setModel(self.list_model)
 
         # self.map_df = pd.DataFrame('0000000T0(00) 0.55', index=[3, 4, 5], columns=self.map_columns)
-        self.map_df = pd.DataFrame(index=[], columns=self.map_columns)
-        self.map_model = ShipmentModel(self.map_df, 'map')
+        map_df = pd.DataFrame(index=[], columns=self.map_columns)
+        self.map_model = ShipmentModel(map_df, 'map')
         self.map_view.setModel(self.map_model)
 
         # setup components look
+        self.list_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         # self.list_view.horizontalHeader().setOffset(2)
         # self.list_view.setContentsMargins(2, 2, 2, 2)
-        self.list_view.horizontalHeader().setMinimumSectionSize(32)
+        self.list_view.horizontalHeader().setMinimumSectionSize(24)
 
         self.map_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.map_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -84,23 +86,28 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         if any([col not in file_df.columns for col in self.list_columns]):
             self.status_bar.showMessage(f'ERROR! Cannot find column(s) "{self.list_columns}" in selected file!')
             return
-        # get list of samples with its placements
+        # get list of samples with its placements and put it to view
         samples_df = file_df[list(self.list_columns)]
+        self.list_model = ShipmentModel(samples_df, 'list')
+        self.list_view.setModel(self.list_model)
 
-        # get amount of required rows for samples
-        max_size = np.ceil(samples_df.shape[0] / self.box_columns) * self.box_columns
+        # get amount of required rows in map for samples
+        max_rows = int(np.ceil(samples_df.shape[0] / self.box_columns))
 
-        # задача: собрать датафрейм из списка
-        arr = pd.Series(samples_df[self.list_columns.code], index=np.arange(0, max_size)).values.reshape((-1, self.box_columns))
+        # convert list to map
+        samples = file_df[self.list_columns.code]
+        arr = [['', *samples.values[i:i + self.box_columns]] for i in range(0, samples.size, self.box_columns)]
+        map_df = pd.DataFrame(arr, index=np.arange(0, max_rows), columns=self.map_columns)
+        # generate first map column
+        map_df.iloc[:, 0] = [n % self.box_columns for n in range(1, max_rows + 1)]
+        # insert separators
+        # TODO: insert separators
 
-
-        self.map_df = pd.DataFrame(arr,
-                                   index=np.arange(0, max_size),
-                                   columns=self.map_columns)
-        self.map_model.layoutChanged.emit()
+        self.map_model = ShipmentModel(map_df.fillna(''), 'map')
+        self.map_view.setModel(self.map_model)
 
     def debug_action(self):
-        self.map_df += 1
+        self.map_model.df.iloc[:, 1:] += ' 0.55'
         self.map_model.layoutChanged.emit()
 
 

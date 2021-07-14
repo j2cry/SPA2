@@ -27,7 +27,7 @@ class ShipmentModel(QAbstractTableModel):
             if (self.model_type == 'list') and (index.column() == 0):
                 return Qt.AlignVCenter
             return Qt.AlignCenter
-        # if role == Qt.TextWordWrap:
+        # if (self.model_type == 'map') and (role == Qt.TextWordWrap):
         #     return True
         # if role == Qt.FontRole:
         #     return QFont('Courier New')
@@ -36,3 +36,11 @@ class ShipmentModel(QAbstractTableModel):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             return self._data.columns[col]
         return None
+
+    @property
+    def df(self):
+        return self._data
+
+    @df.setter
+    def df(self, value):
+        self._data = value
