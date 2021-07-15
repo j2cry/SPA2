@@ -38,18 +38,14 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.work_button.clicked.connect(self.debug_action)
 
         # initialize models for tables
-        self.shipment = ShipmentModel()
-        self.list_view.setModel(self.shipment.list_model)
-        self.map_view.setModel(self.shipment.map_model)
+        # dbg_map_df = pd.DataFrame('0000000T0(00) 0.55', index=np.arange(0, 20), columns=list('abcdefghi'))
         # dbg_samples_df = pd.DataFrame('0000000T0(00)',
         #                               index=np.arange(0, 20),
         #                               columns=['Код', 'st0', 'st1', 'st2', 'st3', 'st4'])
-        # self.list_model = ShipmentListModel()
-        # self.list_view.setModel(self.list_model)
-
-        # dbg_map_df = pd.DataFrame('0000000T0(00) 0.55', index=np.arange(0, 20), columns=list('abcdefghi'))
-        # self.map_model = ShipmentMapModel()
-        # self.map_view.setModel(self.map_model)
+        # self.shipment = ShipmentModel(df=dbg_samples_df)
+        self.shipment = ShipmentModel()
+        self.list_view.setModel(self.shipment.list_model)
+        self.map_view.setModel(self.shipment.map_model)
 
         # setup components look
         self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -74,11 +70,8 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         file_df = pd.read_excel(list_file.selectedFiles()[0])
 
         self.shipment.load(file_df)
-        # self.list_model.import_from(file_df)
-        self.shipment.list_model.layoutChanged.emit()
-
-        # self.map_model.import_from(file_df)
-        self.shipment.map_model.layoutChanged.emit()
+        # self.shipment.list_model.layoutChanged.emit()
+        # self.shipment.map_model.layoutChanged.emit()
 
     def debug_action(self):
         cond = (self.map_model.df.index != '')
