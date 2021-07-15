@@ -169,7 +169,7 @@
        <enum>QLayout::SetDefaultConstraint</enum>
       </property>
       <item row="0" column="0">
-       <widget class="QPushButton" name="load_button">
+       <widget class="QPushButton" name="import_button">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -198,7 +198,7 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QPushButton" name="save_button">
+       <widget class="QPushButton" name="export_button">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -348,6 +348,14 @@
   </widget>
   <widget class="QStatusBar" name="status_bar"/>
  </widget>
+ <tabstops>
+  <tabstop>shipment_number</tabstop>
+  <tabstop>import_button</tabstop>
+  <tabstop>export_button</tabstop>
+  <tabstop>work_button</tabstop>
+  <tabstop>list_view</tabstop>
+  <tabstop>map_view</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

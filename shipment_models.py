@@ -2,6 +2,7 @@ from collections import namedtuple
 from string import ascii_lowercase
 
 import pandas as pd
+import numpy as np
 from PyQt5.QtCore import QAbstractTableModel, Qt
 
 # ----------------- default parameters -----------------
@@ -14,11 +15,11 @@ default_code_column = 'Код'
 default_columns = (default_code_column, 'st0', 'st1', 'st2', 'st3', 'st4')
 
 
-# ------------------- model classes --------------------
 class ShipmentModel:
+    """ Main class for operating with shipment data """
     def __init__(self, **kwargs):
         if len(kwargs.keys() & {'df', 'columns'}) > 1:
-            raise ValueError('Only one keyword argument is required: df or columns.')
+            raise ValueError('Only one keyword argument is allowed: df or columns.')
 
         # parse box options
         self.box_options = BoxOptions(*[v if k not in kwargs.keys() else kwargs.get(k)
@@ -57,53 +58,79 @@ class ShipmentModel:
         if any([col not in df.columns for col in self.columns]):
             return 'ERROR! Cannot find one or more required columns in selected file!'
         self.list_model.df = df[self.columns]
-        # self.list_model.setData(df[self.columns])
         self.list_to_map()
 
+    def item_position(self, row, column=None):
+        """ Get item position in list/map by its indexes in map/list """
+        box_capacity = self.box_options.rows * self.box_options.columns
+        if column is not None:      # find in list by map indexes
+            full_boxes = row // (self.box_options.rows + self.box_options.separator)
+            row_in_box = row % (self.box_options.rows + self.box_options.separator)
+            index = (full_boxes * box_capacity + row_in_box * self.box_options.columns + column, 0)
+            return self.list_model.index(*index)
+        else:                       # find in map by list index
+            full_boxes = row // box_capacity
+            row_in_map = (row // self.box_options.columns) + self.box_options.separator * full_boxes
+            col_in_map = row % self.box_options.columns
+            return self.map_model.index(row_in_map, col_in_map)
+
+    @property
     def box_amount(self):
-        # TODO
-        pass
+        return str(np.ceil(self.list_model.df.shape[0] /
+                           (self.box_options.columns * self.box_options.rows)).astype('int'))
 
 
-
+# ------------------- model classes --------------------
 class AbstractDataFrameModel(QAbstractTableModel):
     def __init__(self, df: pd.DataFrame):
         QAbstractTableModel.__init__(self)
-        self._data = df
+        self._df = None
+        self.df = df
 
     def rowCount(self, parent=None):
-        return self._data.shape[0]
+        return self.df.shape[0]
 
     def columnCount(self, parent=None):
-        return self._data.shape[1]
+        return self.df.shape[1]
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...):
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
-                return self._data.columns[section]
+                return self._df.columns[section]
             if orientation == Qt.Vertical:
-                return str(self._data.index[section])
+                return str(self._df.index[section])
         if role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
 
+    # def setData(self, index, value, role: int = ...):
+    #     if index.isValid() and role == Qt.EditRole:
+    #         self.df.iloc[index.row(), index.column()] = value.iloc[index.row(), index.column()]
+    #         self.dataChanged.emit(index, index)
+    #         self.layoutChanged.emit()
+    #         return True
+    #     else:
+    #         return False
+
     @property
     def df(self):
-        return self._data
+        return self._df
 
     @df.setter
     def df(self, value):
-        self._data = value
-        # self.dataChanged.emit()
+        self._df = value
+        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1))
         self.layoutChanged.emit()
 
 
 class ShipmentListModel(AbstractDataFrameModel):
+    """ Model for shipment list """
+
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return
 
         if role == Qt.DisplayRole:
-            return str(self._data.iloc[index.row(), index.column()])
+            return str(self._df.iloc[index.row(), index.column()])
         if role == Qt.TextAlignmentRole:        # for first column in list set left text alignment
             return Qt.AlignVCenter if index.column() == 0 else Qt.AlignCenter
         # if role == Qt.FontRole:
@@ -112,15 +139,16 @@ class ShipmentListModel(AbstractDataFrameModel):
 
 class ShipmentMapModel(AbstractDataFrameModel):
     """ Model for shipment map, based on shipment list (ShipmentListModel) """
+
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return
 
         if role == Qt.DisplayRole:
-            return str(self._data.iloc[index.row(), index.column()])        # TODO: + weight if notna
+            return str(self._df.iloc[index.row(), index.column()])
         if role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
-        # if (self.model_type == 'map') and (role == Qt.TextWordWrap):
+        # if role == Qt.TextWordWrap:
         #     return True
         # if role == Qt.FontRole:
         #     return QFont('Courier New')
