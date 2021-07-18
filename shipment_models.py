@@ -39,6 +39,16 @@ class ShipmentModel:
         return str(np.ceil(self.list_model.df.shape[0] /
                            (self.box_options.columns * self.box_options.rows)).astype('int'))
 
+    def __update_models(self, index):
+        """ Update both models at selected item in list """
+        row, col = self.item_position(index).row(), self.item_position(index).column()
+        # recast index to QModelIndex
+        self.list_model.dataChanged.emit(self.list_model.index(index, 0), self.list_model.index(index, 0))
+        self.list_model.layoutChanged.emit()
+        self.list_model.dataChanged.emit(self.map_model.index(row, col), self.map_model.index(row, col))
+        self.map_model.layoutChanged.emit()
+
+
     def list_to_map(self, *, inplace=True):
         """ Convert samples list (Series) to shipment map (DataFrame)"""
         # samples = self.list_model.df[[self.code_column, 'Weight']].apply(lambda x: x[0] + ' ' + x[1] if x[1] is not None else x[0])
@@ -89,9 +99,7 @@ class ShipmentModel:
         self.list_model.df.loc[index, 'Weight'] = weight
         row, col = self.item_position(index).row(), self.item_position(index).column()
         self.map_model.df.iloc[row, col] += f' {weight}'
-
-        self.list_model.layoutChanged.emit()
-        self.map_model.layoutChanged.emit()
+        self.__update_models(index)
 
 
 # ------------------- model classes --------------------
