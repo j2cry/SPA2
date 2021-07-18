@@ -12,7 +12,7 @@ default_box_options = {'rows': 9,
                        'separator': 2}
 
 default_code_column = 'Код'
-default_columns = (default_code_column, 'st0', 'st1', 'st2', 'st3', 'st4')
+default_columns = (default_code_column, 'st0', 'st1', 'st2', 'st3', 'st4', 'Weight')
 
 
 class ShipmentModel:
@@ -34,9 +34,17 @@ class ShipmentModel:
         self.list_model = ShipmentListModel(df)
         self.map_model = ShipmentMapModel(self.list_to_map(inplace=False))
 
+    @property
+    def box_amount(self):
+        return str(np.ceil(self.list_model.df.shape[0] /
+                           (self.box_options.columns * self.box_options.rows)).astype('int'))
+
     def list_to_map(self, *, inplace=True):
         """ Convert samples list (Series) to shipment map (DataFrame)"""
-        samples = self.list_model.df[self.code_column]
+        # samples = self.list_model.df[[self.code_column, 'Weight']].apply(lambda x: x[0] + ' ' + x[1] if x[1] is not None else x[0])
+        # TODO: don't add space when weight is not set???
+        samples = self.list_model.df[self.code_column] + ' ' + self.list_model.df['Weight']
+
         array, indexes = [], []
         for index in range(0, samples.size, self.box_options.columns):
             row = (index // self.box_options.columns) % self.box_options.rows + 1
@@ -55,8 +63,9 @@ class ShipmentModel:
 
     def load(self, df: pd.DataFrame):
         # if target columns was not found --> exit
-        if any([col not in df.columns for col in self.columns]):
+        if any([col not in df.columns for col in self.columns if col != 'Weight']):
             return 'ERROR! Cannot find one or more required columns in selected file!'
+        df['Weight'] = ''
         self.list_model.df = df[self.columns]
         self.list_to_map()
 
@@ -74,10 +83,15 @@ class ShipmentModel:
             col_in_map = row % self.box_options.columns
             return self.map_model.index(row_in_map, col_in_map)
 
-    @property
-    def box_amount(self):
-        return str(np.ceil(self.list_model.df.shape[0] /
-                           (self.box_options.columns * self.box_options.rows)).astype('int'))
+    def set_weight(self, index, weight: float):
+        """ Set weight to item by its index in list """
+        weight = np.round(weight, 2)
+        self.list_model.df.loc[index, 'Weight'] = weight
+        row, col = self.item_position(index).row(), self.item_position(index).column()
+        self.map_model.df.iloc[row, col] += f' {weight}'
+
+        self.list_model.layoutChanged.emit()
+        self.map_model.layoutChanged.emit()
 
 
 # ------------------- model classes --------------------

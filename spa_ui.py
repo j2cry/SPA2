@@ -89,6 +89,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         if caller == 'list':
             new_selection = self.shipment.item_position(selected.row())
             self.map_view.selectionModel().select(new_selection, QtCore.QItemSelectionModel.ClearAndSelect)
+            self.map_view.scrollTo(new_selection)
         elif caller == 'map':
             new_selection = self.shipment.item_position(selected.row(), selected.column())
             self.list_view.selectRow(new_selection.row())
@@ -99,9 +100,10 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         pass
 
     def debug_action(self):
-        cond = (self.shipment.map_model.df.index != '')
-        self.shipment.map_model.df[cond] += ' 0.55'
-        self.shipment.map_model.layoutChanged.emit()
+        self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), 0.55)
+        # cond = (self.shipment.map_model.df.index != '')
+        # self.shipment.map_model.df[cond] += ' 0.55'
+        # self.shipment.map_model.layoutChanged.emit()
 
 
 # start GUI
