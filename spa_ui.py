@@ -1,10 +1,11 @@
 import re
 import sys
 from functools import partial
+from time import sleep
 
 import pandas as pd
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from PyQt5 import QtWidgets, uic, QtCore
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
@@ -15,6 +16,11 @@ ShipmentListColumns = namedtuple('ShipmentListColumns', 'code st0 st1 st2 st3 st
 
 
 class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
+    # selection constants
+    SelectClear = 0
+    SelectPrev = 1
+    SelectNext = 2
+
     def __init__(self):
         super(ShipmentPackingAssistantUI, self).__init__()
         uic.loadUi('ui/spa2.ui', self)
@@ -77,6 +83,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.shipment_number.setText(num.group(0) if num else '')
 
     def back_selection(self, caller):
+        """ Update selection on another view on caller-vew selection changed """
         caller_map = {'list': self.list_view.selectedIndexes,
                       'map': self.map_view.selectedIndexes}
         if not (selected := caller_map.get(caller)()) or selected[0].data() == '':
@@ -96,11 +103,21 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
     def select(self, direction):
         """ Select next or previous item in list
-            @direction = 'next' or 'prev' """
-        pass
+            :param @direction = SelectClear / SelectPrev / SelectNext """
+        if not (selected := self.list_view.selectedIndexes()):
+            return
+        selector = defaultdict(lambda: lambda: -1,
+                               {self.SelectClear: lambda: -1,
+                                self.SelectPrev: lambda: selected[0].row() - 1,
+                                self.SelectNext: lambda: selected[0].row() + 1})
+        if (new_index := selector.get(direction)()) > -1:
+            self.list_view.selectRow(new_index)
+        else:
+            self.list_view.clearSelection()
 
     def debug_action(self):
         self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), 0.55)
+        self.select(self.SelectNext)
         # cond = (self.shipment.map_model.df.index != '')
         # self.shipment.map_model.df[cond] += ' 0.55'
         # self.shipment.map_model.layoutChanged.emit()
