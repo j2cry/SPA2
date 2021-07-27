@@ -1,7 +1,6 @@
 import re
 import sys
 from functools import partial
-from time import sleep
 
 import pandas as pd
 
@@ -51,8 +50,6 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         self.list_view.selectionModel().selectionChanged.connect(partial(self.back_selection, 'list'))
         self.map_view.selectionModel().selectionChanged.connect(partial(self.back_selection, 'map'))
-        # self.list_view.clicked.connect(partial(self.back_selection, 'list'))
-        # self.map_view.clicked.connect(partial(self.back_selection, 'map'))
 
         # setup components look - this takes too much resources
         self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -116,8 +113,8 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.list_view.clearSelection()
 
     def debug_action(self):
-        self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), 0.55)
         self.select(self.SelectNext)
+        self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), 0.55)
         # cond = (self.shipment.map_model.df.index != '')
         # self.shipment.map_model.df[cond] += ' 0.55'
         # self.shipment.map_model.layoutChanged.emit()

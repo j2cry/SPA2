@@ -43,15 +43,13 @@ class ShipmentModel:
         """ Update both models at selected item in list """
         row, col = self.item_position(index).row(), self.item_position(index).column()
         # recast index to QModelIndex
-        self.list_model.dataChanged.emit(self.list_model.index(index, 0), self.list_model.index(index, 0))
-        self.list_model.layoutChanged.emit()
-        self.list_model.dataChanged.emit(self.map_model.index(row, col), self.map_model.index(row, col))
-        self.map_model.layoutChanged.emit()
-
+        # list_index = self.list_model.index(index, 0)
+        # self.list_model.dataChanged.emit(list_index, list_index, [Qt.DisplayRole])
+        map_index = self.map_model.index(row, col)
+        self.map_model.dataChanged.emit(map_index, map_index, [Qt.DisplayRole])
 
     def list_to_map(self, *, inplace=True):
         """ Convert samples list (Series) to shipment map (DataFrame)"""
-        # samples = self.list_model.df[[self.code_column, 'Weight']].apply(lambda x: x[0] + ' ' + x[1] if x[1] is not None else x[0])
         # TODO: don't add space when weight is not set???
         samples = self.list_model.df[self.code_column] + ' ' + self.list_model.df['Weight']
 
@@ -140,7 +138,9 @@ class AbstractDataFrameModel(QAbstractTableModel):
     @df.setter
     def df(self, value):
         self._df = value
-        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount() - 1, self.columnCount() - 1))
+        self.dataChanged.emit(self.index(0, 0),
+                              self.index(self.rowCount() - 1, self.columnCount() - 1),
+                              [Qt.DisplayRole])
         self.layoutChanged.emit()
 
 
