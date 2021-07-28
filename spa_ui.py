@@ -10,7 +10,7 @@ from PyQt5 import QtWidgets, uic, QtCore
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-from shipment_models import ShipmentModel, ShipmentListDelegate
+from shipment_models import ShipmentModel
 
 ShipmentListColumns = namedtuple('ShipmentListColumns', 'code st0 st1 st2 st3 st4')
 
@@ -53,7 +53,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.map_view.selectionModel().selectionChanged.connect(partial(self.back_selection, 'map'))
 
         # setup components look - this takes too much resources
-        self.list_view.setItemDelegate(ShipmentListDelegate())
+        # self.list_view.setItemDelegate(ShipmentListDelegate())
 
         self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)

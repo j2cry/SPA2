@@ -4,7 +4,7 @@ from string import ascii_lowercase
 
 import pandas as pd
 import numpy as np
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5 import QtCore
 from PyQt5.Qt import Qt
 
 # ----------------- default parameters -----------------
@@ -14,7 +14,8 @@ default_box_options = {'rows': 9,
                        'separator': 2}
 
 default_code_column = 'Код'
-default_columns = (default_code_column, 'st0', 'st1', 'st2', 'st3', 'st4', 'Weight')
+weight_column = 'Weight'
+default_columns = (default_code_column, 'st0', 'st1', 'st2', 'st3', 'st4', weight_column)
 
 
 class ShipmentModel:
@@ -34,21 +35,31 @@ class ShipmentModel:
         self.map_columns = kwargs.get('map_columns', list(ascii_lowercase[:self.box_options.columns]))
 
         self.list_model = ShipmentListModel(df)
+        self.list_model.dataChanged.connect(self.__update_map)      # for updating map on ListView edit
         self.map_model = ShipmentMapModel(self.list_to_map())
+
+    def __update_map(self, index: QtCore.QModelIndex):
+        """ Update shipment map if list item was changed """
+        # collect value
+        weight = self.list_model.df.loc[index.row(), weight_column]
+        code = self.list_model.df.loc[index.row(), self.code_column]
+        value = f'{code} {weight}' if weight else code
+        # create QModelIndex and set data
+        map_index = self.item_position(index.row())
+        self.map_model.setData(map_index, value, Qt.EditRole)
 
     @property
     def box_amount(self):
+        """ Return amount of required boxes """
         return str(np.ceil(self.list_model.df.shape[0] /
                            (self.box_options.columns * self.box_options.rows)).astype('int'))
 
     def list_to_map(self) -> pd.DataFrame:
         """ Convert samples list (Series) to shipment map (DataFrame)"""
-        samples = self.list_model.df[self.code_column]
-        weights = self.list_model.df['Weight']
-        # add weight if it is set
+        samples = self.list_model.df[self.code_column].copy()
+        weights = self.list_model.df[weight_column]
         weight_exists = weights != ''
-        # samples.loc[weight_exists] = samples[weight_exists] + ' ' + weights[weight_exists].values
-        samples = samples + ' ' + weights
+        samples.loc[weight_exists] += ' ' + weights.loc[weight_exists]
 
         array, indexes = [], []
         for index in range(0, samples.size, self.box_options.columns):
@@ -62,14 +73,15 @@ class ShipmentModel:
         return pd.DataFrame(array, index=indexes, columns=self.map_columns).fillna('')
 
     def load(self, df: pd.DataFrame):
+        """ Load shipment list from DataFrame and build shipment map """
         # if target columns was not found --> exit
-        if any([col not in df.columns for col in self.columns if col != 'Weight']):
+        if any([col not in df.columns for col in self.columns if col != weight_column]):
             return 'ERROR! Cannot find one or more required columns in selected file!'
-        df['Weight'] = ''
+        df[weight_column] = ''
         self.list_model.df = df[self.columns]
         self.map_model.df = self.list_to_map()
 
-    def item_position(self, row, column=None):
+    def item_position(self, row: int, column=None):
         """ Get item position in list/map by its indexes in map/list """
         box_capacity = self.box_options.rows * self.box_options.columns
         if column is not None:      # find in list by map indexes
@@ -83,23 +95,16 @@ class ShipmentModel:
             col_in_map = row % self.box_options.columns
             return self.map_model.index(row_in_map, col_in_map)
 
-    def set_weight(self, index, weight: float):
+    def set_weight(self, index: int, weight: str):
         """ Set weight to item by its index in list """
-        # translate index to map position
-        row, col = self.item_position(index).row(), self.item_position(index).column()
-        # create QItemIndex
-        list_index = self.list_model.index(index, self.list_model.df.columns.get_loc('Weight'))
-        map_index = self.map_model.index(row, col)
-        # set data
-        code = self.list_model.df.loc[index, self.code_column]
-        weight = np.round(weight, 2)
-        result = f'{code} {weight}' if weight else code
+        # create QModelIndex
+        list_index = self.list_model.index(index, self.list_model.df.columns.get_loc(weight_column))
         self.list_model.setData(list_index, weight, Qt.EditRole)
-        self.map_model.setData(map_index, result, Qt.EditRole)
 
 
 # ------------------- model classes --------------------
 class AbstractDataFrameModel(QtCore.QAbstractTableModel):
+    """ Parent abstract DataFrame-based model class for QTableView (map and list) """
     def __init__(self, df: pd.DataFrame):
         super(AbstractDataFrameModel, self).__init__()
         self._df = None
@@ -123,7 +128,6 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
     def setData(self, index: QtCore.QModelIndex, value: typing.Any, role: int = ...) -> bool:
         if not index.isValid():
             return False
-
         if role == Qt.EditRole:
             self._df.iloc[index.row(), index.column()] = value
             self.dataChanged.emit(index, index, [Qt.DisplayRole])
@@ -145,18 +149,16 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
 class ShipmentListModel(AbstractDataFrameModel):
     """ Model for shipment list """
     def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlags:
-        # TODO: set it in GUI designer?
         flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-        if index.column() == 0:
+        if (index.column() == 0) or (index.column() == 6):      # 0: Code; 6: Weight
             return Qt.ItemFlags(flags | Qt.ItemIsEditable)
         else:
             return Qt.ItemFlags(flags)
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index: QtCore.QModelIndex, role=Qt.DisplayRole):
         if not index.isValid():
             return
-
-        if (role == Qt.DisplayRole) or (role == Qt.EditRole):
+        elif (role == Qt.DisplayRole) or (role == Qt.EditRole):
             return str(self._df.iloc[index.row(), index.column()])
         elif role == Qt.TextAlignmentRole:        # for first column in list set left text alignment
             return Qt.AlignVCenter if index.column() == 0 else Qt.AlignCenter
@@ -165,14 +167,13 @@ class ShipmentListModel(AbstractDataFrameModel):
 
 
 class ShipmentMapModel(AbstractDataFrameModel):
-    """ Model for shipment map, based on shipment list (ShipmentListModel) """
-    def data(self, index, role=Qt.DisplayRole):
+    """ Model for shipment map """
+    def data(self, index: QtCore.QModelIndex, role=Qt.DisplayRole):
         if not index.isValid():
             return
-
-        if role == Qt.DisplayRole:
+        elif role == Qt.DisplayRole:
             return str(self._df.iloc[index.row(), index.column()])
-        if role == Qt.TextAlignmentRole:
+        elif role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
         # if role == Qt.TextWordWrap:
         #     return True
@@ -180,18 +181,5 @@ class ShipmentMapModel(AbstractDataFrameModel):
         #     return QFont('Courier New')
 
 
-class ShipmentListDelegate(QtWidgets.QStyledItemDelegate):
-    pass
-    # def createEditor(self, parent: QtWidgets.QWidget, option: 'QtWidgets.QStyleOptionViewItem',
-    #                  index: QtCore.QModelIndex) -> QtWidgets.QWidget:
-    #     if index.column() == 0:
-    #         editor = QtWidgets.QLineEdit()
-    #     else:
-    #         editor = None
-    #     return editor
-
-    # def paint(self, painter: QtGui.QPainter, option: 'QtWidgets.QStyleOptionViewItem', index: QtCore.QModelIndex):
-    #     if index.column() == 0:
-    #         return
-    #     else:
-    #         super(ShipmentListDelegate, self).paint(painter, option, index)
+# class ShipmentListDelegate(QtWidgets.QStyledItemDelegate):
+#     pass

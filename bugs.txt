@@ -1,3 +1,4 @@
-1. autofill Shipment number: analyse only filename, not full path
+1. При уменьшении формы хреново ресайзит ListView: колонку с кодом
+    Ее сжимает и не разжимает обратно
 
 
