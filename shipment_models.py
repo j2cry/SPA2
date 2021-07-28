@@ -43,8 +43,12 @@ class ShipmentModel:
 
     def list_to_map(self) -> pd.DataFrame:
         """ Convert samples list (Series) to shipment map (DataFrame)"""
-        # TODO: don't add space when weight is not set???
-        samples = self.list_model.df[self.code_column] + ' ' + self.list_model.df['Weight']
+        samples = self.list_model.df[self.code_column]
+        weights = self.list_model.df['Weight']
+        # add weight if it is set
+        weight_exists = weights != ''
+        # samples.loc[weight_exists] = samples[weight_exists] + ' ' + weights[weight_exists].values
+        samples = samples + ' ' + weights
 
         array, indexes = [], []
         for index in range(0, samples.size, self.box_options.columns):
@@ -81,22 +85,23 @@ class ShipmentModel:
 
     def set_weight(self, index, weight: float):
         """ Set weight to item by its index in list """
-        weight = np.round(weight, 2)
-        self.list_model.df.loc[index, 'Weight'] = weight
+        # translate index to map position
         row, col = self.item_position(index).row(), self.item_position(index).column()
+        # create QItemIndex
+        list_index = self.list_model.index(index, self.list_model.df.columns.get_loc('Weight'))
         map_index = self.map_model.index(row, col)
-
-        new_weight = self.map_model.df.iloc[row, col] + f' {weight}'
-        self.map_model.setData(map_index, new_weight, Qt.EditRole)
-        # self.map_model.df.iloc[row, col] += f' {weight}'
-        # self.map_model.dataChanged.emit(map_index, map_index, [Qt.DisplayRole])
+        # set data
+        code = self.list_model.df.loc[index, self.code_column]
+        weight = np.round(weight, 2)
+        result = f'{code} {weight}' if weight else code
+        self.list_model.setData(list_index, weight, Qt.EditRole)
+        self.map_model.setData(map_index, result, Qt.EditRole)
 
 
 # ------------------- model classes --------------------
 class AbstractDataFrameModel(QtCore.QAbstractTableModel):
     def __init__(self, df: pd.DataFrame):
         super(AbstractDataFrameModel, self).__init__()
-        # QtCore.QAbstractTableModel.__init__(self)
         self._df = None
         self._df = df
 
@@ -118,12 +123,12 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
     def setData(self, index: QtCore.QModelIndex, value: typing.Any, role: int = ...) -> bool:
         if not index.isValid():
             return False
-        try:
+
+        if role == Qt.EditRole:
             self._df.iloc[index.row(), index.column()] = value
-        except (ValueError, IndexError):
-            return False
-        self.dataChanged.emit(index, index, [Qt.DisplayRole])
-        return True
+            self.dataChanged.emit(index, index, [Qt.DisplayRole])
+            return True
+        return False
 
     @property
     def df(self):
@@ -139,13 +144,21 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
 
 class ShipmentListModel(AbstractDataFrameModel):
     """ Model for shipment list """
+    def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlags:
+        # TODO: set it in GUI designer?
+        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        if index.column() == 0:
+            return Qt.ItemFlags(flags | Qt.ItemIsEditable)
+        else:
+            return Qt.ItemFlags(flags)
+
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return
 
-        if role == Qt.DisplayRole:
+        if (role == Qt.DisplayRole) or (role == Qt.EditRole):
             return str(self._df.iloc[index.row(), index.column()])
-        if role == Qt.TextAlignmentRole:        # for first column in list set left text alignment
+        elif role == Qt.TextAlignmentRole:        # for first column in list set left text alignment
             return Qt.AlignVCenter if index.column() == 0 else Qt.AlignCenter
         # if role == Qt.FontRole:
         #     return QFont('Courier New')
@@ -167,10 +180,18 @@ class ShipmentMapModel(AbstractDataFrameModel):
         #     return QFont('Courier New')
 
 
-class ShipmentMapDelegate(QtWidgets.QStyledItemDelegate):
-    def paint(self, painter: QtGui.QPainter, option: 'QtWidgets.QStyleOptionViewItem', index: QtCore.QModelIndex):
-        if index.column() == 1:
-            return
-        else:
-            QtWidgets.QStyledItemDelegate.paint(painter, option, index)
-            # super(ShipmentMapDelegate, self).paint(painter, option, index)
+class ShipmentListDelegate(QtWidgets.QStyledItemDelegate):
+    pass
+    # def createEditor(self, parent: QtWidgets.QWidget, option: 'QtWidgets.QStyleOptionViewItem',
+    #                  index: QtCore.QModelIndex) -> QtWidgets.QWidget:
+    #     if index.column() == 0:
+    #         editor = QtWidgets.QLineEdit()
+    #     else:
+    #         editor = None
+    #     return editor
+
+    # def paint(self, painter: QtGui.QPainter, option: 'QtWidgets.QStyleOptionViewItem', index: QtCore.QModelIndex):
+    #     if index.column() == 0:
+    #         return
+    #     else:
+    #         super(ShipmentListDelegate, self).paint(painter, option, index)
