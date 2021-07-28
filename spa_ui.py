@@ -1,3 +1,4 @@
+import pathlib
 import re
 import sys
 from functools import partial
@@ -9,7 +10,7 @@ from PyQt5 import QtWidgets, uic, QtCore
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-from shipment_models import ShipmentModel
+from shipment_models import ShipmentModel, ShipmentMapDelegate
 
 ShipmentListColumns = namedtuple('ShipmentListColumns', 'code st0 st1 st2 st3 st4')
 
@@ -55,10 +56,12 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+
         self.map_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.map_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.map_view.setFont(self.font)
 
+        # self.list_view.setItemDelegate(ShipmentMapDelegate())         # test delegate: doesn't work yet
         # show form
         self.show()
 
@@ -76,7 +79,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.shipment.load(file_df)
         self.boxes_amount.setText(self.shipment.box_amount)
         # get shipment number from path
-        num = re.search(r'\d+', filepath)
+        num = re.search(r'\d+', pathlib.Path(filepath).name)
         self.shipment_number.setText(num.group(0) if num else '')
 
     def back_selection(self, caller):
@@ -113,8 +116,8 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.list_view.clearSelection()
 
     def debug_action(self):
-        self.select(self.SelectNext)
         self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), 0.55)
+        self.select(self.SelectNext)
         # cond = (self.shipment.map_model.df.index != '')
         # self.shipment.map_model.df[cond] += ' 0.55'
         # self.shipment.map_model.layoutChanged.emit()

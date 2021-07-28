@@ -1,9 +1,11 @@
+import typing
 from collections import namedtuple
 from string import ascii_lowercase
 
 import pandas as pd
 import numpy as np
-from PyQt5.QtCore import QAbstractTableModel, Qt
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.Qt import Qt
 
 # ----------------- default parameters -----------------
 BoxOptions = namedtuple('BoxOptions', 'rows columns separator')
@@ -32,23 +34,14 @@ class ShipmentModel:
         self.map_columns = kwargs.get('map_columns', list(ascii_lowercase[:self.box_options.columns]))
 
         self.list_model = ShipmentListModel(df)
-        self.map_model = ShipmentMapModel(self.list_to_map(inplace=False))
+        self.map_model = ShipmentMapModel(self.list_to_map())
 
     @property
     def box_amount(self):
         return str(np.ceil(self.list_model.df.shape[0] /
                            (self.box_options.columns * self.box_options.rows)).astype('int'))
 
-    def __update_models(self, index):
-        """ Update both models at selected item in list """
-        row, col = self.item_position(index).row(), self.item_position(index).column()
-        # recast index to QModelIndex
-        # list_index = self.list_model.index(index, 0)
-        # self.list_model.dataChanged.emit(list_index, list_index, [Qt.DisplayRole])
-        map_index = self.map_model.index(row, col)
-        self.map_model.dataChanged.emit(map_index, map_index, [Qt.DisplayRole])
-
-    def list_to_map(self, *, inplace=True):
+    def list_to_map(self) -> pd.DataFrame:
         """ Convert samples list (Series) to shipment map (DataFrame)"""
         # TODO: don't add space when weight is not set???
         samples = self.list_model.df[self.code_column] + ' ' + self.list_model.df['Weight']
@@ -62,12 +55,7 @@ class ShipmentModel:
             if row == self.box_options.rows:
                 array.extend([[''] * self.box_options.columns] * self.box_options.separator)
                 indexes.extend([''] * self.box_options.separator)
-
-        df = pd.DataFrame(array, index=indexes, columns=self.map_columns).fillna('')
-        if inplace:
-            self.map_model.df = df
-        else:
-            return df
+        return pd.DataFrame(array, index=indexes, columns=self.map_columns).fillna('')
 
     def load(self, df: pd.DataFrame):
         # if target columns was not found --> exit
@@ -75,7 +63,7 @@ class ShipmentModel:
             return 'ERROR! Cannot find one or more required columns in selected file!'
         df['Weight'] = ''
         self.list_model.df = df[self.columns]
-        self.list_to_map()
+        self.map_model.df = self.list_to_map()
 
     def item_position(self, row, column=None):
         """ Get item position in list/map by its indexes in map/list """
@@ -96,22 +84,27 @@ class ShipmentModel:
         weight = np.round(weight, 2)
         self.list_model.df.loc[index, 'Weight'] = weight
         row, col = self.item_position(index).row(), self.item_position(index).column()
-        self.map_model.df.iloc[row, col] += f' {weight}'
-        self.__update_models(index)
+        map_index = self.map_model.index(row, col)
+
+        new_weight = self.map_model.df.iloc[row, col] + f' {weight}'
+        self.map_model.setData(map_index, new_weight, Qt.EditRole)
+        # self.map_model.df.iloc[row, col] += f' {weight}'
+        # self.map_model.dataChanged.emit(map_index, map_index, [Qt.DisplayRole])
 
 
 # ------------------- model classes --------------------
-class AbstractDataFrameModel(QAbstractTableModel):
+class AbstractDataFrameModel(QtCore.QAbstractTableModel):
     def __init__(self, df: pd.DataFrame):
-        QAbstractTableModel.__init__(self)
+        super(AbstractDataFrameModel, self).__init__()
+        # QtCore.QAbstractTableModel.__init__(self)
         self._df = None
-        self.df = df
+        self._df = df
 
     def rowCount(self, parent=None):
-        return self.df.shape[0]
+        return self._df.shape[0]
 
     def columnCount(self, parent=None):
-        return self.df.shape[1]
+        return self._df.shape[1]
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...):
         if role == Qt.DisplayRole:
@@ -122,14 +115,15 @@ class AbstractDataFrameModel(QAbstractTableModel):
         if role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
 
-    # def setData(self, index, value, role: int = ...):
-    #     if index.isValid() and role == Qt.EditRole:
-    #         self.df.iloc[index.row(), index.column()] = value.iloc[index.row(), index.column()]
-    #         self.dataChanged.emit(index, index)
-    #         self.layoutChanged.emit()
-    #         return True
-    #     else:
-    #         return False
+    def setData(self, index: QtCore.QModelIndex, value: typing.Any, role: int = ...) -> bool:
+        if not index.isValid():
+            return False
+        try:
+            self._df.iloc[index.row(), index.column()] = value
+        except (ValueError, IndexError):
+            return False
+        self.dataChanged.emit(index, index, [Qt.DisplayRole])
+        return True
 
     @property
     def df(self):
@@ -137,16 +131,14 @@ class AbstractDataFrameModel(QAbstractTableModel):
 
     @df.setter
     def df(self, value):
+        # update whole model
+        self.beginResetModel()
         self._df = value
-        self.dataChanged.emit(self.index(0, 0),
-                              self.index(self.rowCount() - 1, self.columnCount() - 1),
-                              [Qt.DisplayRole])
-        self.layoutChanged.emit()
+        self.endResetModel()
 
 
 class ShipmentListModel(AbstractDataFrameModel):
     """ Model for shipment list """
-
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return
@@ -161,7 +153,6 @@ class ShipmentListModel(AbstractDataFrameModel):
 
 class ShipmentMapModel(AbstractDataFrameModel):
     """ Model for shipment map, based on shipment list (ShipmentListModel) """
-
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return
@@ -174,3 +165,12 @@ class ShipmentMapModel(AbstractDataFrameModel):
         #     return True
         # if role == Qt.FontRole:
         #     return QFont('Courier New')
+
+
+class ShipmentMapDelegate(QtWidgets.QStyledItemDelegate):
+    def paint(self, painter: QtGui.QPainter, option: 'QtWidgets.QStyleOptionViewItem', index: QtCore.QModelIndex):
+        if index.column() == 1:
+            return
+        else:
+            QtWidgets.QStyledItemDelegate.paint(painter, option, index)
+            # super(ShipmentMapDelegate, self).paint(painter, option, index)

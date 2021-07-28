@@ -1,1 +1,3 @@
-1. SelectNext + setWeight(): no vertical resizing
+1. autofill Shipment number: analyse only filename, not full path
+
+
