@@ -6,8 +6,7 @@ from functools import partial
 import pandas as pd
 
 from collections import namedtuple, defaultdict
-from PyQt5 import QtWidgets, uic, QtCore
-from PyQt5.QtGui import QFont
+from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
 from shipment_models import ShipmentModel
@@ -25,7 +24,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         super(ShipmentPackingAssistantUI, self).__init__()
         uic.loadUi('ui/spa2.ui', self)
         # general settings
-        self.font = QFont('Courier New')
+        self.font = QtGui.QFont('Courier New')
 
         # initialize components
         self.status_bar = self.findChild(QtWidgets.QStatusBar, 'status_bar')
@@ -117,11 +116,8 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.list_view.clearSelection()
 
     def debug_action(self):
-        self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), 0.55)
+        self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
         self.select(self.SelectNext)
-        # cond = (self.shipment.map_model.df.index != '')
-        # self.shipment.map_model.df[cond] += ' 0.55'
-        # self.shipment.map_model.layoutChanged.emit()
 
 
 # start GUI

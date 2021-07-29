@@ -183,7 +183,7 @@
          </size>
         </property>
         <property name="text">
-         <string/>
+         <string>Import</string>
         </property>
         <property name="icon">
          <iconset>
@@ -212,7 +212,7 @@
          </size>
         </property>
         <property name="text">
-         <string/>
+         <string>Export</string>
         </property>
         <property name="icon">
          <iconset>
@@ -308,7 +308,7 @@
       </property>
       <property name="minimumSize">
        <size>
-        <width>240</width>
+        <width>280</width>
         <height>0</height>
        </size>
       </property>

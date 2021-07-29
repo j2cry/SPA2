@@ -34,8 +34,8 @@ class ShipmentModel:
         self.code_column = kwargs.get('code_column', default_code_column)
         self.map_columns = kwargs.get('map_columns', list(ascii_lowercase[:self.box_options.columns]))
 
-        self.list_model = ShipmentListModel(df)
-        self.list_model.dataChanged.connect(self.__update_map)      # for updating map on ListView edit
+        self.list_model = ShipmentListModel(df, self.__update_map)
+        # self.list_model.dataChanged.connect(self.__update_map)      # for updating map on ListView edit
         self.map_model = ShipmentMapModel(self.list_to_map())
 
     def __update_map(self, index: QtCore.QModelIndex):
@@ -47,6 +47,7 @@ class ShipmentModel:
         # create QModelIndex and set data
         map_index = self.item_position(index.row())
         self.map_model.setData(map_index, value, Qt.EditRole)
+        self.map_model.dataChanged.emit(map_index, map_index, [Qt.DisplayRole])
 
     @property
     def box_amount(self):
@@ -105,10 +106,19 @@ class ShipmentModel:
 # ------------------- model classes --------------------
 class AbstractDataFrameModel(QtCore.QAbstractTableModel):
     """ Parent abstract DataFrame-based model class for QTableView (map and list) """
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame, update_function: typing.Callable = None):
+        """ Initialize model
+            :param @df
+                model data as DataFrame
+            :param @update_function(index: QModelIndex):
+                function for updating dependent models;
+                specify this for the model that is being edited by the user (by default, ListModel), so that the
+                changes are translated to the dependent models (MapModel)
+        """
         super(AbstractDataFrameModel, self).__init__()
         self._df = None
         self._df = df
+        self._update_dependent_models = update_function
 
     def rowCount(self, parent=None):
         return self._df.shape[0]
@@ -130,7 +140,9 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
             return False
         if role == Qt.EditRole:
             self._df.iloc[index.row(), index.column()] = value
-            self.dataChanged.emit(index, index, [Qt.DisplayRole])
+            # call function to update dependent models
+            if self._update_dependent_models is not None:
+                self._update_dependent_models(index)
             return True
         return False
 
@@ -175,8 +187,8 @@ class ShipmentMapModel(AbstractDataFrameModel):
             return str(self._df.iloc[index.row(), index.column()])
         elif role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
-        # if role == Qt.TextWordWrap:
-        #     return True
+        if role == Qt.TextWordWrap:
+            return True
         # if role == Qt.FontRole:
         #     return QFont('Courier New')
 
