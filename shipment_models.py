@@ -4,7 +4,7 @@ from string import ascii_lowercase
 
 import pandas as pd
 import numpy as np
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.Qt import Qt
 
 # ----------------- default parameters -----------------
@@ -82,7 +82,7 @@ class ShipmentModel:
         self.list_model.df = df[self.columns]
         self.map_model.df = self.list_to_map()
 
-    def item_position(self, row: int, column=None):
+    def item_position(self, row: int, column=None, inlist=None):
         """ Get item position in list/map by its indexes in map/list """
         box_capacity = self.box_options.rows * self.box_options.columns
         if column is not None:      # find in list by map indexes
@@ -193,5 +193,11 @@ class ShipmentMapModel(AbstractDataFrameModel):
         #     return QFont('Courier New')
 
 
-# class ShipmentListDelegate(QtWidgets.QStyledItemDelegate):
-#     pass
+class ShipmentListDelegate(QtWidgets.QStyledItemDelegate):
+    def editorEvent(self, event: QtCore.QEvent, model: QtCore.QAbstractItemModel,
+                    option: 'QtWidgets.QStyleOptionViewItem', index: QtCore.QModelIndex) -> bool:
+        return super(ShipmentListDelegate, self).editorEvent(event, model, option, index)
+
+    def createEditor(self, parent: QtWidgets.QWidget, option: 'QtWidgets.QStyleOptionViewItem',
+                     index: QtCore.QModelIndex) -> QtWidgets.QWidget:
+        return super(ShipmentListDelegate, self).createEditor(parent, option, index)

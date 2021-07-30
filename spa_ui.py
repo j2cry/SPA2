@@ -9,7 +9,7 @@ from collections import namedtuple, defaultdict
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-from shipment_models import ShipmentModel
+from shipment_models import ShipmentModel, ShipmentListDelegate, weight_column
 
 ShipmentListColumns = namedtuple('ShipmentListColumns', 'code st0 st1 st2 st3 st4')
 
@@ -50,10 +50,9 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         self.list_view.selectionModel().selectionChanged.connect(partial(self.back_selection, 'list'))
         self.map_view.selectionModel().selectionChanged.connect(partial(self.back_selection, 'map'))
-
-        # setup components look - this takes too much resources
         # self.list_view.setItemDelegate(ShipmentListDelegate())
 
+        # setup components look - this takes too much resources
         self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -82,24 +81,35 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         num = re.search(r'\d+', pathlib.Path(filepath).name)
         self.shipment_number.setText(num.group(0) if num else '')
 
-    def back_selection(self, caller):
+    def back_selection(self, caller_name):
         """ Update selection on another view on caller-vew selection changed """
-        caller_map = {'list': self.list_view.selectedIndexes,
-                      'map': self.map_view.selectedIndexes}
-        if not (selected := caller_map.get(caller)()) or selected[0].data() == '':
-            self.list_view.clearSelection()
-            self.map_view.clearSelection()
+        caller_map = {'list': self.list_view,
+                      'map': self.map_view}
+        target_map = {'list': self.map_view,
+                      'map': self.list_view}
+        caller = caller_map.get(caller_name, None)
+        target = target_map.get(caller_name, None)
+        if not caller or not target or (not (selected := caller.selectedIndexes()) or selected[0].data() == ''):
+            caller.clearSelection()
+            target.clearSelection()
             return
         selected = selected[0]
         self.status_bar.showMessage(f'{selected.data()}: {selected.row()} {selected.column()}')
 
-        if caller == 'list':
+        flags = QtCore.QItemSelectionModel.ClearAndSelect
+        if caller_name == 'list':       # select in map
+            # correct selection in list
+            weight_selection = caller.model().index(selected.row(),
+                                                    self.shipment.list_model.df.columns.get_loc(weight_column))
+            caller.setCurrentIndex(weight_selection)
+            # caller.scrollTo(weight_selection)
             new_selection = self.shipment.item_position(selected.row())
-            self.map_view.selectionModel().select(new_selection, QtCore.QItemSelectionModel.ClearAndSelect)
-            self.map_view.scrollTo(new_selection)
-        elif caller == 'map':
+        elif caller_name == 'map':      # select in list
             new_selection = self.shipment.item_position(selected.row(), selected.column())
-            self.list_view.selectRow(new_selection.row())
+            flags |= QtCore.QItemSelectionModel.Rows
+
+        target.selectionModel().select(new_selection, flags)
+        target.scrollTo(new_selection)
 
     def select(self, direction):
         """ Select next or previous item in list
