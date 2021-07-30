@@ -278,6 +278,9 @@
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
+      <property name="focusPolicy">
+       <enum>Qt::NoFocus</enum>
+      </property>
       <property name="verticalScrollBarPolicy">
        <enum>Qt::ScrollBarAlwaysOn</enum>
       </property>
@@ -350,11 +353,10 @@
  </widget>
  <tabstops>
   <tabstop>shipment_number</tabstop>
+  <tabstop>list_view</tabstop>
   <tabstop>import_button</tabstop>
   <tabstop>export_button</tabstop>
   <tabstop>work_button</tabstop>
-  <tabstop>list_view</tabstop>
-  <tabstop>map_view</tabstop>
  </tabstops>
  <resources/>
  <connections/>

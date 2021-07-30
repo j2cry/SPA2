@@ -1,7 +1,6 @@
 import pathlib
 import re
 import sys
-from functools import partial
 
 import pandas as pd
 
@@ -9,7 +8,7 @@ from collections import namedtuple, defaultdict
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-from shipment_models import ShipmentModel, ShipmentListDelegate, weight_column
+from shipment_models import ShipmentModel, ShipmentListDelegate
 
 ShipmentListColumns = namedtuple('ShipmentListColumns', 'code st0 st1 st2 st3 st4')
 
@@ -51,6 +50,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         self.list_view.selectionModel().selectionChanged.connect(self.back_selection)
         self.map_view.selectionModel().selectionChanged.connect(self.back_selection)
+        self.list_view.selectionModel().currentChanged.connect(self.back_index)
         self.list_view.setItemDelegate(ShipmentListDelegate())
 
         # setup components look - this takes too much resources
@@ -82,12 +82,26 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         num = re.search(r'\d+', pathlib.Path(filepath).name)
         self.shipment_number.setText(num.group(0) if num else '')
 
+    def back_index(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex):
+        """ Update current index in list_view. It always must be the same as weight column """
+        if not current.isValid() or not previous.isValid():
+            return
+        if current.column() != self.shipment.weight_column_index:
+            current = self.list_view.model().index(current.row(), self.shipment.weight_column_index)
+            self.list_view.setCurrentIndex(current)
+
     def back_selection(self, selection_range):
         """ Update selection on another view on caller-vew selection changed """
-        weight_column_index = self.shipment.list_model.df.columns.get_loc(weight_column)
-        # selected = selected[0] if len(selected := selection_range.indexes()) == 1 else selected[weight_column_index]
-
         selected_length = len(selection_range.indexes())
+        caller = self.map_view if (selected_length == 1) else self.list_view
+        # target = self.map_view if (selected_length != 1) else self.list_view
+
+        # check if trying to select free cell => return
+        if (selected_length == 0) or (caller.model().data(selection_range.indexes()[0]) == ''):
+            self.list_view.clearSelection()
+            self.map_view.clearSelection()
+            return
+
         if selected_length == 1:        # back select in list
             # collect new selection and flags
             selected = selection_range.indexes()[0]
@@ -97,9 +111,9 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.list_view.selectionModel().select(new_selection, flags)
             self.list_view.scrollTo(new_selection)
 
-        elif selected_length >= weight_column_index:        # back select in map
+        elif selected_length >= self.shipment.weight_column_index:        # back select in map
             # collect new selection and flags
-            selected = selection_range.indexes()[weight_column_index]
+            selected = selection_range.indexes()[self.shipment.weight_column_index]
             new_selection = self.shipment.item_position(selected.row())
             flags = QtCore.QItemSelectionModel.ClearAndSelect
             # set selection to map and scroll
@@ -107,6 +121,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.map_view.scrollTo(new_selection)
             # correct list current index
             self.list_view.setCurrentIndex(selected)
+            self.list_view.setFocus()
 
         else:           # selection out of range => clear select
             self.list_view.clearSelection()
@@ -114,7 +129,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
     def select(self, direction):
         """ Select next or previous item in list
-            :param @direction = SelectClear / SelectPrev / SelectNext """
+            :param direction = SelectClear / SelectPrev / SelectNext """
         if not (selected := self.list_view.selectedIndexes()):
             return
         selector = defaultdict(lambda: lambda: -1,

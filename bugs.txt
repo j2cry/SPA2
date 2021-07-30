@@ -1,5 +1,2 @@
-1. При select в map_view и click на выделенное в list_view в нем меняется currentIndex и при keypress нет ввода в
-    колонку Weight. Надо как-то корректировать этот currentIndex и не давать его менять))
-
 
 

@@ -4,7 +4,7 @@ from string import ascii_lowercase
 
 import pandas as pd
 import numpy as np
-from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.Qt import Qt
 
 # ----------------- default parameters -----------------
@@ -13,9 +13,9 @@ default_box_options = {'rows': 9,
                        'columns': 9,
                        'separator': 2}
 
-default_code_column = 'Код'
+code_column = 'Код'
 weight_column = 'Weight'
-default_columns = (default_code_column, 'st0', 'st1', 'st2', 'st3', 'st4', weight_column)
+default_columns = (code_column, 'st0', 'st1', 'st2', 'st3', 'st4', weight_column)
 
 
 class ShipmentModel:
@@ -31,18 +31,20 @@ class ShipmentModel:
         # if df is not specified generate new one with given columns
         df = kwargs.get('df', pd.DataFrame(columns=kwargs.get('columns', default_columns)))
         self.columns = df.columns
-        self.code_column = kwargs.get('code_column', default_code_column)
         self.map_columns = kwargs.get('map_columns', list(ascii_lowercase[:self.box_options.columns]))
 
         self.list_model = ShipmentListModel(df, self.__update_map)
         # self.list_model.dataChanged.connect(self.__update_map)      # for updating map on ListView edit
         self.map_model = ShipmentMapModel(self.list_to_map())
 
+        self.code_column_index = self.list_model.df.columns.get_loc(code_column)
+        self.weight_column_index = self.list_model.df.columns.get_loc(weight_column)
+
     def __update_map(self, index: QtCore.QModelIndex):
         """ Update shipment map if list item was changed """
         # collect value
         weight = self.list_model.df.loc[index.row(), weight_column]
-        code = self.list_model.df.loc[index.row(), self.code_column]
+        code = self.list_model.df.loc[index.row(), code_column]
         value = f'{code} {weight}' if weight else code
         # create QModelIndex and set data
         map_index = self.item_position(index.row())
@@ -57,7 +59,7 @@ class ShipmentModel:
 
     def list_to_map(self) -> pd.DataFrame:
         """ Convert samples list (Series) to shipment map (DataFrame)"""
-        samples = self.list_model.df[self.code_column].copy()
+        samples = self.list_model.df[code_column].copy()
         weights = self.list_model.df[weight_column]
         weight_exists = weights != ''
         samples.loc[weight_exists] += ' ' + weights.loc[weight_exists]
@@ -99,7 +101,7 @@ class ShipmentModel:
     def set_weight(self, index: int, weight: str):
         """ Set weight to item by its index in list """
         # create QModelIndex
-        list_index = self.list_model.index(index, self.list_model.df.columns.get_loc(weight_column))
+        list_index = self.list_model.index(index, self.weight_column_index)
         self.list_model.setData(list_index, weight, Qt.EditRole)
 
 
@@ -162,7 +164,8 @@ class ShipmentListModel(AbstractDataFrameModel):
     """ Model for shipment list """
     def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlags:
         flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-        if (index.column() == 0) or (index.column() == 6):      # 0: Code; 6: Weight
+        if (index.column() == self.df.columns.get_loc(code_column)) or \
+                (index.column() == self.df.columns.get_loc(weight_column)):   # 0: Code; 6: Weight
             return Qt.ItemFlags(flags | Qt.ItemIsEditable)
         else:
             return Qt.ItemFlags(flags)
@@ -201,6 +204,6 @@ class ShipmentListDelegate(QtWidgets.QStyledItemDelegate):
 
         return super(ShipmentListDelegate, self).editorEvent(event, model, option, index)
 
-    def createEditor(self, parent: QtWidgets.QWidget, option: 'QtWidgets.QStyleOptionViewItem',
-                     index: QtCore.QModelIndex) -> QtWidgets.QWidget:
-        return super(ShipmentListDelegate, self).createEditor(parent, option, index)
+    # def createEditor(self, parent: QtWidgets.QWidget, option: 'QtWidgets.QStyleOptionViewItem',
+    #                  index: QtCore.QModelIndex) -> QtWidgets.QWidget:
+    #     return super(ShipmentListDelegate, self).createEditor(parent, option, index)
