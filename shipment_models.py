@@ -82,7 +82,7 @@ class ShipmentModel:
         self.list_model.df = df[self.columns]
         self.map_model.df = self.list_to_map()
 
-    def item_position(self, row: int, column=None, inlist=None):
+    def item_position(self, row: int, column=None):
         """ Get item position in list/map by its indexes in map/list """
         box_capacity = self.box_options.rows * self.box_options.columns
         if column is not None:      # find in list by map indexes
@@ -196,6 +196,9 @@ class ShipmentMapModel(AbstractDataFrameModel):
 class ShipmentListDelegate(QtWidgets.QStyledItemDelegate):
     def editorEvent(self, event: QtCore.QEvent, model: QtCore.QAbstractItemModel,
                     option: 'QtWidgets.QStyleOptionViewItem', index: QtCore.QModelIndex) -> bool:
+        if (event.type() == QtCore.QEvent.KeyPress) and index.column() != 6:
+            return True
+
         return super(ShipmentListDelegate, self).editorEvent(event, model, option, index)
 
     def createEditor(self, parent: QtWidgets.QWidget, option: 'QtWidgets.QStyleOptionViewItem',
