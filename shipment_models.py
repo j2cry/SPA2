@@ -22,6 +22,7 @@ color_unpacked = (200, 10, 10, 50)      # RGBA cell background color without `sp
 color_packed = (10, 200, 10, 50)        # RGBA cell background color with `space` symbol: that means it's packed
 
 
+# ----------------- Shipment model class -----------------
 class ShipmentModel:
     """ Main class for operating with shipment data """
     def __init__(self, **kwargs):

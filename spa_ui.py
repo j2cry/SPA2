@@ -4,22 +4,15 @@ import sys
 
 import pandas as pd
 
-from collections import namedtuple, defaultdict
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
+from additional import ItemSelection
 from shipment_list_view import ShipmentListView
 from shipment_models import ShipmentModel
 
-ShipmentListColumns = namedtuple('ShipmentListColumns', 'code st0 st1 st2 st3 st4')
-
 
 class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
-    # selection constants
-    SelectClear = 0
-    SelectPrev = 1
-    SelectNext = 2
-
     def __init__(self):
         super(ShipmentPackingAssistantUI, self).__init__()
         uic.loadUi('ui/spa2.ui', self)
@@ -53,8 +46,11 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.map_view.selectionModel().selectionChanged.connect(self.back_selection)
         self.list_view.selectionModel().currentChanged.connect(self.back_index)
         # self.list_view.setItemDelegate(ShipmentListDelegate())
+        # self.list_view.editorDestroyed.connect(self.select())
 
         # setup components look - this takes too much resources
+        # NOTE: THIS IS THE REASON OF UI LAGS
+        self.list_view.resizeRowToContents(0)
         self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -128,26 +124,24 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.list_view.clearSelection()
             self.map_view.clearSelection()
 
-    def select(self, direction):
+    def select(self, direction: ItemSelection):
         """ Select next or previous item in list
             :param direction = SelectClear / SelectPrev / SelectNext """
+        # todo check new_index is not out of range
         if not (selected := self.list_view.selectedIndexes()):
             return
-        selector = defaultdict(lambda: lambda: -1,
-                               {self.SelectClear: lambda: -1,
-                                self.SelectPrev: lambda: selected[0].row() - 1,
-                                self.SelectNext: lambda: selected[0].row() + 1})
-        if (new_index := selector.get(direction)()) > -1:
+        selector = ItemSelection.selector()
+        if (new_index := selector.get(direction)(selected[0].row())) > -1:
             self.list_view.selectRow(new_index)
         else:
             self.list_view.clearSelection()
 
     def debug_action(self):
-        # self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
-        # self.select(self.SelectNext)
-        cur_row = self.list_view.selectedIndexes()[0]
-        next_row = self.shipment.list_model.index(cur_row.row() - 10, cur_row.column())
-        self.shipment.move_row(cur_row, next_row)
+        self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
+        self.select(ItemSelection.PREVIOUS)
+        # cur_row = self.list_view.selectedIndexes()[0]
+        # next_row = self.shipment.list_model.index(cur_row.row() - 1, cur_row.column())
+        # self.shipment.move_row(cur_row, next_row)
 
 
 # start GUI
