@@ -8,8 +8,8 @@ from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
 from additional import ItemSelection
-from shipment_list_view import ShipmentListView
-from shipment_models import ShipmentModel
+from shipment_list import ShipmentListView
+from shipment_model import ShipmentModel
 
 
 class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
@@ -44,9 +44,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         self.list_view.selectionModel().selectionChanged.connect(self.back_selection)
         self.map_view.selectionModel().selectionChanged.connect(self.back_selection)
-        self.list_view.selectionModel().currentChanged.connect(self.back_index)
         # self.list_view.setItemDelegate(ShipmentListDelegate())
-        # self.list_view.editorDestroyed.connect(self.select())
 
         # setup components look - this takes too much resources
         # NOTE: THIS IS THE REASON OF UI LAGS
@@ -79,14 +77,6 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         num = re.search(r'\d+', pathlib.Path(filepath).name)
         self.shipment_number.setText(num.group(0) if num else '')
 
-    def back_index(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex):
-        """ Update current index in list_view. It always must be the same as weight column """
-        if not current.isValid() or not previous.isValid():
-            return
-        if current.column() != self.shipment.weight_column_index:
-            current = self.list_view.model().index(current.row(), self.shipment.weight_column_index)
-            self.list_view.setCurrentIndex(current)
-
     def back_selection(self, selection_range):
         """ Update selection on another view on caller-vew selection changed """
         selected_length = len(selection_range.indexes())
@@ -108,9 +98,9 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.list_view.selectionModel().select(new_selection, flags)
             self.list_view.scrollTo(new_selection)
 
-        elif selected_length >= self.shipment.weight_column_index:        # back select in map
+        elif selected_length >= self.shipment.list_model.weight_column_index:        # back select in map
             # collect new selection and flags
-            selected = selection_range.indexes()[self.shipment.weight_column_index]
+            selected = selection_range.indexes()[self.shipment.list_model.weight_column_index]
             new_selection = self.shipment.item_position(selected.row())
             flags = QtCore.QItemSelectionModel.ClearAndSelect
             # set selection to map and scroll
@@ -125,9 +115,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.map_view.clearSelection()
 
     def select(self, direction: ItemSelection):
-        """ Select next or previous item in list
-            :param direction = SelectClear / SelectPrev / SelectNext """
-        # todo check new_index is not out of range
+        """ Select next or previous item in list """
         if not (selected := self.list_view.selectedIndexes()):
             return
         selector = ItemSelection.selector()
@@ -137,8 +125,9 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.list_view.clearSelection()
 
     def debug_action(self):
-        self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
-        self.select(ItemSelection.PREVIOUS)
+        pass
+        # self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
+        # self.select(ItemSelection.PREVIOUS)
         # cur_row = self.list_view.selectedIndexes()[0]
         # next_row = self.shipment.list_model.index(cur_row.row() - 1, cur_row.column())
         # self.shipment.move_row(cur_row, next_row)

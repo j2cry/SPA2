@@ -271,7 +271,7 @@
      </widget>
     </item>
     <item row="1" column="0" colspan="5">
-     <widget class="QTableView" name="map_view">
+     <widget class="ShipmentMapView" name="map_view">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>0</horstretch>
@@ -355,7 +355,12 @@
   <customwidget>
    <class>ShipmentListView</class>
    <extends>QTableView</extends>
-   <header>shipment_list_view</header>
+   <header>shipment_list</header>
+  </customwidget>
+  <customwidget>
+   <class>ShipmentMapView</class>
+   <extends>QTableView</extends>
+   <header>shipment_map</header>
   </customwidget>
  </customwidgets>
  <tabstops>
