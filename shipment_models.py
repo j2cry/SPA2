@@ -8,6 +8,8 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.Qt import Qt
 
 # ----------------- default parameters -----------------
+from timing import process_timer
+
 BoxOptions = namedtuple('BoxOptions', 'rows columns separator')
 default_box_options = {'rows': 9,
                        'columns': 9,
@@ -35,14 +37,13 @@ class ShipmentModel:
         self.columns = df.columns
         self.map_columns = kwargs.get('map_columns', list(ascii_lowercase[:self.box_options.columns]))
 
-        self.list_model = ShipmentListModel(df, self.__update_map)
-        # self.list_model.dataChanged.connect(self.__update_map)      # for updating map on ListView edit
+        self.list_model = ShipmentListModel(df, self.__update_map_value)
         self.map_model = ShipmentMapModel(self.list_to_map())
 
         self.code_column_index = self.list_model.df.columns.get_loc(code_column)
         self.weight_column_index = self.list_model.df.columns.get_loc(weight_column)
 
-    def __update_map(self, index: QtCore.QModelIndex):
+    def __update_map_value(self, index: QtCore.QModelIndex):
         """ Update shipment map if list item was changed """
         # collect value
         weight = self.list_model.df.loc[index.row(), weight_column]
@@ -59,7 +60,7 @@ class ShipmentModel:
         return str(np.ceil(self.list_model.df.shape[0] /
                            (self.box_options.columns * self.box_options.rows)).astype('int'))
 
-    def list_to_map(self) -> pd.DataFrame:      # todo IT'S VERY SLOW
+    def list_to_map(self) -> pd.DataFrame:
         """ Convert samples list (Series) to shipment map (DataFrame)"""
         samples = self.list_model.df[code_column].copy()
         weights = self.list_model.df[weight_column]
@@ -109,7 +110,6 @@ class ShipmentModel:
     def move_row(self, source: QtCore.QModelIndex, destination: QtCore.QModelIndex) -> bool:
         """ Move row from source to destination.
             Attention! This function drops selection! """
-        # TODO: IT'S VERY SLOW!!!
         if not source.isValid() or not destination.isValid():
             return False
 
@@ -215,14 +215,11 @@ class ShipmentMapModel(AbstractDataFrameModel):
         #     return QFont('Courier New')
 
 
-class ShipmentListDelegate(QtWidgets.QStyledItemDelegate):
-    def editorEvent(self, event: QtCore.QEvent, model: QtCore.QAbstractItemModel,
-                    option: 'QtWidgets.QStyleOptionViewItem', index: QtCore.QModelIndex) -> bool:
-        if (event.type() == QtCore.QEvent.KeyPress) and index.column() != 6:
-            return True
-
-        return super(ShipmentListDelegate, self).editorEvent(event, model, option, index)
-
-    # def createEditor(self, parent: QtWidgets.QWidget, option: 'QtWidgets.QStyleOptionViewItem',
-    #                  index: QtCore.QModelIndex) -> QtWidgets.QWidget:
-    #     return super(ShipmentListDelegate, self).createEditor(parent, option, index)
+# class ShipmentListDelegate(QtWidgets.QStyledItemDelegate):
+#     def editorEvent(self, event: QtCore.QEvent, model: QtCore.QAbstractItemModel,
+#                     option: 'QtWidgets.QStyleOptionViewItem', index: QtCore.QModelIndex) -> bool:
+#         return super(ShipmentListDelegate, self).editorEvent(event, model, option, index)
+#
+#     def createEditor(self, parent: QtWidgets.QWidget, option: 'QtWidgets.QStyleOptionViewItem',
+#                      index: QtCore.QModelIndex) -> QtWidgets.QWidget:
+#         return super(ShipmentListDelegate, self).createEditor(parent, option, index)

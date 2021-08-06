@@ -8,7 +8,8 @@ from collections import namedtuple, defaultdict
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-from shipment_models import ShipmentModel, ShipmentListDelegate
+from shipment_list_view import ShipmentListView
+from shipment_models import ShipmentModel
 
 ShipmentListColumns = namedtuple('ShipmentListColumns', 'code st0 st1 st2 st3 st4')
 
@@ -30,7 +31,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.status_bar = self.findChild(QtWidgets.QStatusBar, 'status_bar')
         self.boxes_amount = self.findChild(QtWidgets.QLabel, 'boxes_amount')
         self.map_view = self.findChild(QtWidgets.QTableView, 'map_view')
-        self.list_view = self.findChild(QtWidgets.QTableView, 'list_view')
+        self.list_view = self.findChild(ShipmentListView, 'list_view')
         self.shipment_number = self.findChild(QtWidgets.QLineEdit, 'shipment_number')
         self.import_button = self.findChild(QtWidgets.QPushButton, 'import_button')
         self.export_button = self.findChild(QtWidgets.QPushButton, 'export_button')
@@ -51,7 +52,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.list_view.selectionModel().selectionChanged.connect(self.back_selection)
         self.map_view.selectionModel().selectionChanged.connect(self.back_selection)
         self.list_view.selectionModel().currentChanged.connect(self.back_index)
-        self.list_view.setItemDelegate(ShipmentListDelegate())
+        # self.list_view.setItemDelegate(ShipmentListDelegate())
 
         # setup components look - this takes too much resources
         self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)

@@ -302,7 +302,7 @@
      </widget>
     </item>
     <item row="1" column="5">
-     <widget class="QTableView" name="list_view">
+     <widget class="ShipmentListView" name="list_view">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
         <horstretch>0</horstretch>
@@ -351,6 +351,13 @@
   </widget>
   <widget class="QStatusBar" name="status_bar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ShipmentListView</class>
+   <extends>QTableView</extends>
+   <header>shipment_list_view</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>shipment_number</tabstop>
   <tabstop>list_view</tabstop>
