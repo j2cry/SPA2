@@ -90,16 +90,3 @@ class ShipmentModel:
         # create QModelIndex
         list_index = self.list_model.index(index, self.list_model.weight_column_index)
         self.list_model.setData(list_index, weight, Qt.EditRole)
-
-    def move_row(self, source: QtCore.QModelIndex, destination: QtCore.QModelIndex) -> bool:
-        """ Move row from source to destination.
-            Attention! This function drops selection! """
-        if not source.isValid() or not destination.isValid():
-            return False
-
-        index = self.list_model.df.index.to_list()
-        item = index.pop(source.row())
-        index.insert(destination.row(), item)
-        self.list_model.df = self.list_model.df.reindex(index)
-        self.map_model.df = self.list_to_map()
-        return True

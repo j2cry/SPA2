@@ -7,9 +7,33 @@ from additional import AbstractDataFrameModel
 # -------------------- QTableView --------------------
 class ShipmentListView(QtWidgets.QTableView):
     def keyPressEvent(self, e: QtGui.QKeyEvent) -> None:
-        if e.key() == Qt.Key_Enter:         # select next on Enter
-            row = self.selectedIndexes()[0].row()
-            self.selectRow(row + 1)
+        selected = self.selectedIndexes()[0] if self.selectedIndexes() else None
+        move_step = 0
+
+        if selected:
+            if e.key() == Qt.Key_Enter:         # select next on Enter
+                self.selectRow(selected.row() + 1)
+            elif e.key() == Qt.Key_Down:
+                if e.modifiers() == Qt.ShiftModifier:           # one row down on SHIFT + DOWN
+                    move_step = 1
+                elif e.modifiers() == Qt.AltModifier:           # one box row down on ALT + DOWN
+                    move_step = settings.default_box_options.get('columns')
+                elif e.modifiers() == Qt.ControlModifier:       # at the bottom on CTRL + DOWN
+                    move_step = self.model().rowCount() - selected.row() - 1
+            elif e.key() == Qt.Key_Up:
+                if e.modifiers() == Qt.ShiftModifier:           # one row up on SHIFT + UP
+                    move_step = -1
+                elif e.modifiers() == Qt.AltModifier:           # one box row up on ALT + DOWN
+                    move_step = -settings.default_box_options.get('columns')
+                elif e.modifiers() == Qt.ControlModifier:       # at the top on CTRL + UP
+                    move_step = -selected.row()
+
+        if move_step:
+            destination = self.model().index(selected.row() + move_step, selected.column())
+            self.model().move_row_to(selected, destination)
+            self.selectRow(selected.row() + move_step)
+            return
+
         super(ShipmentListView, self).keyPressEvent(e)
 
     def currentChanged(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex) -> None:
@@ -41,11 +65,28 @@ class ShipmentListModel(AbstractDataFrameModel):
 
     @property
     def weight_column_index(self):
+        """ Return index of column named settings.weight_column """
         return self.df.columns.get_loc(settings.weight_column)
 
     @property
     def code_column_index(self):
+        """ Return index of column named settings.code_column """
         return self.df.columns.get_loc(settings.code_column)
+
+    def move_row_to(self, source: QtCore.QModelIndex, destination: QtCore.QModelIndex):
+        """ Move row from source to destination and updates dependent model """
+        if not source.isValid() or not destination.isValid():
+            return False
+
+        index = self.df.index.to_list()
+        item = index.pop(source.row())
+        index.insert(destination.row(), item)
+        self.df = self.df.reindex(index).reset_index(drop=True)
+
+        for i in range(min(source.row(), destination.row()), max(source.row(), destination.row()) + 1):
+            update_index = self.index(i, 0)
+            self._update_dependent_models(update_index)
+        return True
 
 
 # -------------------- QStyledItemDelegate --------------------
