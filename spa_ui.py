@@ -142,8 +142,11 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.list_view.clearSelection()
 
     def debug_action(self):
-        self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
-        self.select(self.SelectNext)
+        # self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
+        # self.select(self.SelectNext)
+        cur_row = self.list_view.selectedIndexes()[0]
+        next_row = self.shipment.list_model.index(cur_row.row() - 10, cur_row.column())
+        self.shipment.move_row(cur_row, next_row)
 
 
 # start GUI

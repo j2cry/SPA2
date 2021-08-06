@@ -4,7 +4,7 @@ from string import ascii_lowercase
 
 import pandas as pd
 import numpy as np
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.Qt import Qt
 
 # ----------------- default parameters -----------------
@@ -16,6 +16,8 @@ default_box_options = {'rows': 9,
 code_column = 'Код'
 weight_column = 'Weight'
 default_columns = (code_column, 'st0', 'st1', 'st2', 'st3', 'st4', weight_column)
+color_unpacked = (200, 10, 10, 50)      # RGBA cell background color without `space` symbol: that means it's unpacked
+color_packed = (10, 200, 10, 50)        # RGBA cell background color with `space` symbol: that means it's packed
 
 
 class ShipmentModel:
@@ -57,7 +59,7 @@ class ShipmentModel:
         return str(np.ceil(self.list_model.df.shape[0] /
                            (self.box_options.columns * self.box_options.rows)).astype('int'))
 
-    def list_to_map(self) -> pd.DataFrame:
+    def list_to_map(self) -> pd.DataFrame:      # todo IT'S VERY SLOW
         """ Convert samples list (Series) to shipment map (DataFrame)"""
         samples = self.list_model.df[code_column].copy()
         weights = self.list_model.df[weight_column]
@@ -104,15 +106,29 @@ class ShipmentModel:
         list_index = self.list_model.index(index, self.weight_column_index)
         self.list_model.setData(list_index, weight, Qt.EditRole)
 
+    def move_row(self, source: QtCore.QModelIndex, destination: QtCore.QModelIndex) -> bool:
+        """ Move row from source to destination.
+            Attention! This function drops selection! """
+        # TODO: IT'S VERY SLOW!!!
+        if not source.isValid() or not destination.isValid():
+            return False
+
+        index = self.list_model.df.index.to_list()
+        item = index.pop(source.row())
+        index.insert(destination.row(), item)
+        self.list_model.df = self.list_model.df.reindex(index)
+        self.map_model.df = self.list_to_map()
+        return True
+
 
 # ------------------- model classes --------------------
 class AbstractDataFrameModel(QtCore.QAbstractTableModel):
     """ Parent abstract DataFrame-based model class for QTableView (map and list) """
     def __init__(self, df: pd.DataFrame, update_function: typing.Callable = None):
         """ Initialize model
-            :param @df
+            :param df
                 model data as DataFrame
-            :param @update_function(index: QModelIndex):
+            :param update_function(index: QModelIndex):
                 function for updating dependent models;
                 specify this for the model that is being edited by the user (by default, ListModel), so that the
                 changes are translated to the dependent models (MapModel)
@@ -186,12 +202,15 @@ class ShipmentMapModel(AbstractDataFrameModel):
     def data(self, index: QtCore.QModelIndex, role=Qt.DisplayRole):
         if not index.isValid():
             return
-        elif role == Qt.DisplayRole:
+        if role == Qt.DisplayRole:
             return str(self._df.iloc[index.row(), index.column()])
         elif role == Qt.TextAlignmentRole:
             return Qt.AlignCenter
-        if role == Qt.TextWordWrap:
+        elif role == Qt.TextWordWrap:
             return True
+        elif role == Qt.BackgroundColorRole:
+            if value := self.data(index):
+                return QtGui.QColor(*color_packed) if value.find(' ') > 0 else QtGui.QColor(*color_unpacked)
         # if role == Qt.FontRole:
         #     return QFont('Courier New')
 
