@@ -1,4 +1,5 @@
 import settings
+import pandas as pd
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import Qt
 from additional import AbstractDataFrameModel
@@ -39,7 +40,9 @@ class ShipmentListView(QtWidgets.QTableView):
     def currentChanged(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex) -> None:
         # if current.row() == previous.row():
         index = self.model().index(current.row(), self.model().weight_column_index)
+
         self.setCurrentIndex(index)
+        super(ShipmentListView, self).currentChanged(current, previous)
 
 
 # -------------------- QAbstractTableModel --------------------
@@ -60,6 +63,8 @@ class ShipmentListModel(AbstractDataFrameModel):
             return str(self._df.iloc[index.row(), index.column()])
         elif role == Qt.TextAlignmentRole:        # for first column in list set left text alignment
             return Qt.AlignVCenter if index.column() == 0 else Qt.AlignCenter
+        # elif role == Qt.BackgroundColorRole:
+        #     return QtGui.QColor(50, 50, 50, 50)
         # if role == Qt.FontRole:
         #     return QFont('Courier New')
 
@@ -83,10 +88,16 @@ class ShipmentListModel(AbstractDataFrameModel):
         index.insert(destination.row(), item)
         self.df = self.df.reindex(index).reset_index(drop=True)
 
-        for i in range(min(source.row(), destination.row()), max(source.row(), destination.row()) + 1):
-            update_index = self.index(i, 0)
-            self._update_dependent_models(update_index)
+        # self._update_dependent_models()
+        self._update_dependent_models(self.index(source.row(), 0), self.index(destination.row(), 0))
         return True
+
+    def insert_row_at(self, row: int, data: pd.Series):
+        """ Insert data at row index """
+        df_a = self.df.iloc[:row]
+        df_b = self.df.iloc[row:]
+        self.df = df_a.append(data, ignore_index=True).append(df_b).reset_index(drop=True)
+        self._update_dependent_models()
 
 
 # -------------------- QStyledItemDelegate --------------------

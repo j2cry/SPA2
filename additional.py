@@ -8,6 +8,25 @@ from PyQt5.Qt import Qt
 BoxOptions = namedtuple('BoxOptions', 'rows columns separator')
 
 
+# -------------------- Generators --------------------
+def range_generator(start: int, stop: int, step: int = 1, endpoint=False):
+    """ Range generator. Keeps the direction """
+    if start < stop:
+        if step < 0:
+            step = -step
+        result = start
+        while (result <= stop) if endpoint else (result < stop):
+            yield result
+            result += step
+    elif start > stop:
+        if step > 0:
+            step = -step
+        result = start
+        while (result >= stop) if endpoint else (result > stop):
+            yield result
+            result += step
+
+
 # -------------------- ItemSelection --------------------
 class ItemSelection(enum.Enum):
     # selection constants
@@ -77,3 +96,16 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
         self.beginResetModel()
         self._df = value
         self.endResetModel()
+
+
+# -------------------- Decorators --------------------
+def validate_selection(method):
+    """ Check if item is selected else return False """
+    # todo сделать универсальным: сейчас он применим только внутри класса ShipmentPackingAssistantUI
+    def wrapper(self, *args):
+        selected = selected[0] if (selected := self.list_view.selectedIndexes()) else None
+        if not selected:
+            return lambda: False
+        args = (selected, *args)
+        return method(self, *args)
+    return wrapper

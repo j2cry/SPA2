@@ -4,7 +4,7 @@ import numpy as np
 from string import ascii_lowercase
 from PyQt5 import QtCore
 from PyQt5.Qt import Qt
-from additional import BoxOptions
+from additional import BoxOptions, range_generator
 from shipment_list import ShipmentListModel
 from shipment_map import ShipmentMapModel
 
@@ -25,18 +25,40 @@ class ShipmentModel:
         self.map_columns = kwargs.get('map_columns', list(ascii_lowercase[:self.box_options.columns]))
 
         self.list_model = ShipmentListModel(df, self.__update_map_value)
-        self.map_model = ShipmentMapModel(self.list_to_map())
+        self.map_model = ShipmentMapModel(self.list_to_map(), self.__map_index_validate)
 
-    def __update_map_value(self, index: QtCore.QModelIndex):
-        """ Update shipment map cell value according to list item at index """
-        # collect value
-        weight = self.list_model.df.loc[index.row(), settings.weight_column]
-        code = self.list_model.df.loc[index.row(), settings.code_column]
-        value = f'{code} {weight}' if weight else code
-        # create QModelIndex and set data
-        map_index = self.item_position(index.row())
-        self.map_model.setData(map_index, value, Qt.EditRole)
-        self.map_model.dataChanged.emit(map_index, map_index, [Qt.DisplayRole])
+    def __update_map_value(self, start: QtCore.QModelIndex = None, end: QtCore.QModelIndex = None):
+        """ Update shipment map cell value according to list item at index.
+            If index is not specified rebuild map """
+        if start and end:
+            # weights = self.list_model.df.loc[start.row():end.row(), settings.weight_column]
+            # codes = self.list_model.df.loc[start.row():end.row(), settings.code_column]
+            for i in range_generator(start.row(), end.row(), endpoint=True):
+                weight = self.list_model.df.loc[i, settings.weight_column]
+                code = self.list_model.df.loc[i, settings.code_column]
+                value = f'{code} {weight}' if weight else code
+                map_index = self.item_position(i)
+                self.map_model.setData(map_index, value, Qt.EditRole)
+
+            map_start = self.item_position(start.row())
+            map_end = self.item_position(end.row())
+            self.map_model.layoutChanged.emit()
+            # self.map_model.dataChanged.emit(map_start, map_end, [Qt.DisplayRole])
+        if start:
+            # collect value
+            weight = self.list_model.df.loc[start.row(), settings.weight_column]
+            code = self.list_model.df.loc[start.row(), settings.code_column]
+            value = f'{code} {weight}' if weight else code
+            # create QModelIndex and set data
+            map_index = self.item_position(start.row())
+            self.map_model.setData(map_index, value, Qt.EditRole)
+            self.map_model.dataChanged.emit(map_index, map_index, [Qt.DisplayRole])
+        else:
+            self.map_model.df = self.list_to_map()
+
+    def __map_index_validate(self, index: QtCore.QModelIndex) -> bool:
+        """ Validates map index according to list data """
+        return self.item_position(index.row(), index.column()).isValid()
 
     @property
     def box_amount(self):
@@ -52,7 +74,7 @@ class ShipmentModel:
         samples.loc[weight_exists] += ' ' + weights.loc[weight_exists]
 
         array, indexes = [], []
-        for index in range(0, samples.size, self.box_options.columns):
+        for index in range_generator(0, samples.size, self.box_options.columns):
             row = (index // self.box_options.columns) % self.box_options.rows + 1
             array.append(samples.values[index:index + self.box_options.columns])
             indexes.append(row)
@@ -78,7 +100,7 @@ class ShipmentModel:
             full_boxes = row // (self.box_options.rows + self.box_options.separator)
             row_in_box = row % (self.box_options.rows + self.box_options.separator)
             index = (full_boxes * box_capacity + row_in_box * self.box_options.columns + column, 0)
-            return self.list_model.index(*index)
+            return self.list_model.index(*index) if row_in_box < self.box_options.rows else QtCore.QModelIndex()
         else:                       # find in map by list index
             full_boxes = row // box_capacity
             row_in_map = (row // self.box_options.columns) + self.box_options.separator * full_boxes

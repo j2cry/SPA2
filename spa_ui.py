@@ -5,9 +5,10 @@ import sys
 import pandas as pd
 
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
+from PyQt5.Qt import Qt
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-from additional import ItemSelection
+from additional import ItemSelection, validate_selection
 from shipment_list import ShipmentListView
 from shipment_model import ShipmentModel
 
@@ -48,7 +49,6 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         # setup components look - this takes too much resources
         # NOTE: THIS IS THE REASON OF UI LAGS
-        self.list_view.resizeRowToContents(0)
         self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -80,14 +80,6 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
     def back_selection(self, selection_range):
         """ Update selection on another view on caller-vew selection changed """
         selected_length = len(selection_range.indexes())
-        caller = self.map_view if (selected_length == 1) else self.list_view
-        # target = self.map_view if (selected_length != 1) else self.list_view
-
-        # check if trying to select free cell => return
-        if (selected_length == 0) or (caller.model().data(selection_range.indexes()[0]) == ''):
-            self.list_view.clearSelection()
-            self.map_view.clearSelection()
-            return
 
         if selected_length == 1:        # back select in list
             # collect new selection and flags
@@ -124,8 +116,30 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         else:
             self.list_view.clearSelection()
 
-    def debug_action(self):
-        pass
+    @validate_selection
+    def insert_action(self, *args):
+        """ Insert free row into shipment list """
+        selected = args[0]
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        columns_count = self.shipment.list_model.df.shape[1]
+        data = pd.Series([''] + ['-'] * (columns_count - 2) + [''], index=self.shipment.list_model.df.columns)
+        if modifiers == Qt.NoModifier:              # as default insert AFTER
+            self.shipment.list_model.insert_row_at(selected.row() + 1, data)
+            self.list_view.selectRow(selected.row())
+        elif modifiers == Qt.ShiftModifier:         # with SHIFT insert BEFORE
+            self.shipment.list_model.insert_row_at(selected.row() - 1, data)
+            self.list_view.selectRow(selected.row())
+
+    @validate_selection
+    def remove_action(self, *args):
+        """ Remove selected row from shipment list """
+        selected = args[0]
+
+    @validate_selection
+    def debug_action(self, *args):
+        # pass
+        self.insert_action()
+
         # self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
         # self.select(ItemSelection.PREVIOUS)
         # cur_row = self.list_view.selectedIndexes()[0]
