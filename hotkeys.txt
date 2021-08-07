@@ -1,0 +1,13 @@
+Hotkeys for shipment list edit:
+
+1. Moving
+    SHIFT + UP/DOWN:    move selected row by 1 row
+    ALT + UP/DOWN:      move selected row by as many rows as there are columns in the box
+    CTRL + UP/DOWN:     move selected row to the top/bottom of the list
+
+2. Inserting
+    INSERT:             insert free row after selection
+    SHIFT + INSERT:     insert free row before selection
+
+3. Deleting
+    not implemented yet

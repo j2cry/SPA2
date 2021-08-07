@@ -1,8 +1,6 @@
-import typing
-
-import pandas as pd
-
 import settings
+import typing
+import pandas as pd
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.Qt import Qt
 from additional import AbstractDataFrameModel
@@ -16,14 +14,6 @@ class ShipmentMapView(QtWidgets.QTableView):
             return QtCore.QItemSelectionModel.SelectionFlags(QtCore.QItemSelectionModel.Deselect)
         else:
             return super(ShipmentMapView, self).selectionCommand(index, event)
-
-    # def selectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection) -> None:
-    #     if not selected or not deselected:
-    #         return
-    #     if self.model().data(selected.indexes()[0]) == '':
-    #         self.clearSelection()
-    #         # self.selectionModel().select(deselected.indexes()[0], QtCore.QItemSelectionModel.ClearAndSelect)
-    #     # super(ShipmentMapView, self).selectionChanged(selected, deselected)
 
 
 # -------------------- QAbstractTableModel --------------------
