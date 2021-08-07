@@ -42,8 +42,7 @@ class ShipmentModel:
 
             map_start = self.item_position(start.row())
             map_end = self.item_position(end.row())
-            self.map_model.layoutChanged.emit()
-            # self.map_model.dataChanged.emit(map_start, map_end, [Qt.DisplayRole])
+            self.map_model.dataChanged.emit(map_start, map_end, [Qt.DisplayRole])
         if start:
             # collect value
             weight = self.list_model.df.loc[start.row(), settings.weight_column]

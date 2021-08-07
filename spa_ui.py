@@ -8,7 +8,7 @@ from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from PyQt5.Qt import Qt
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-from additional import ItemSelection, validate_selection
+from additional import ItemSelection, validate_selection, Direction
 from shipment_list import ShipmentListView
 from shipment_model import ShipmentModel
 
@@ -33,6 +33,8 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.current_sample = self.findChild(QtWidgets.QLabel, 'current_sample')
         self.pos_from = self.findChild(QtWidgets.QPushButton, 'pos_from')
         self.pos_to = self.findChild(QtWidgets.QPushButton, 'pos_to')
+        self.insert_button = self.findChild(QtWidgets.QPushButton, 'insert_button')
+        self.remove_button = self.findChild(QtWidgets.QPushButton, 'remove_button')
 
         # initialize models for tables
         self.shipment = ShipmentModel()
@@ -40,7 +42,10 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.map_view.setModel(self.shipment.map_model)
 
         # bind actions
+        self.insert_button.clicked.connect(self.insert_action)
+        self.remove_button.clicked.connect(self.remove_action)
         self.import_button.clicked.connect(self.import_shipment)
+        self.export_button.clicked.connect(self.export_map)
         self.work_button.clicked.connect(self.debug_action)
 
         self.list_view.selectionModel().selectionChanged.connect(self.back_selection)
@@ -59,23 +64,6 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         # show form
         self.show()
-
-    def import_shipment(self):
-        """ Create shipment model from Excel file """
-        list_file = QtWidgets.QFileDialog(caption='Open shipment list',
-                                          filter='Excel files (*.xls, *.xlsx);')
-        list_file.setFileMode(QFileDialog.ExistingFile)
-        if not list_file.exec():
-            self.status_bar.showMessage(f'File was not opened.')
-            return
-        filepath = list_file.selectedFiles()[0]
-        self.status_bar.showMessage(f'Opening file "{filepath}"')
-        file_df = pd.read_excel(filepath)
-        self.shipment.load(file_df)
-        self.boxes_amount.setText(self.shipment.box_amount)
-        # get shipment number from path
-        num = re.search(r'\d+', pathlib.Path(filepath).name)
-        self.shipment_number.setText(num.group(0) if num else '')
 
     def back_selection(self, selection_range):
         """ Update selection on another view on caller-vew selection changed """
@@ -116,30 +104,42 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         else:
             self.list_view.clearSelection()
 
-    @validate_selection
-    def insert_action(self, *args):
-        """ Insert free row into shipment list """
-        selected = args[0]
-        modifiers = QtWidgets.QApplication.keyboardModifiers()
-        columns_count = self.shipment.list_model.df.shape[1]
-        data = pd.Series([''] + ['-'] * (columns_count - 2) + [''], index=self.shipment.list_model.df.columns)
-        if modifiers == Qt.NoModifier:              # as default insert AFTER
-            self.shipment.list_model.insert_row_at(selected.row() + 1, data)
-            self.list_view.selectRow(selected.row())
-        elif modifiers == Qt.ShiftModifier:         # with SHIFT insert BEFORE
-            self.shipment.list_model.insert_row_at(selected.row() - 1, data)
-            self.list_view.selectRow(selected.row())
+    def import_shipment(self):
+        """ Create shipment model from Excel file """
+        list_file = QtWidgets.QFileDialog(caption='Open shipment list',
+                                          filter='Excel files (*.xls, *.xlsx);')
+        list_file.setFileMode(QFileDialog.ExistingFile)
+        if not list_file.exec():
+            self.status_bar.showMessage(f'File was not opened.')
+            return
+        filepath = list_file.selectedFiles()[0]
+        self.status_bar.showMessage(f'Opening file "{filepath}"')
+        file_df = pd.read_excel(filepath)
+        self.shipment.load(file_df)
+        self.boxes_amount.setText(self.shipment.box_amount)
+        # get shipment number from path
+        num = re.search(r'\d+', pathlib.Path(filepath).name)
+        self.shipment_number.setText(num.group(0) if num else '')
 
-    @validate_selection
-    def remove_action(self, *args):
+    def export_map(self):
+        """ Save shipment map to Excel file """
+        pass
+
+    def insert_action(self):
+        """ Insert free row into shipment list """
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        if modifiers == Qt.NoModifier:              # as default insert AFTER
+            self.list_view.insert_free_row(Direction.AFTER)
+        elif modifiers == Qt.ShiftModifier:         # with SHIFT insert BEFORE
+            self.list_view.insert_free_row(Direction.BEFORE)
+
+    def remove_action(self):
         """ Remove selected row from shipment list """
-        selected = args[0]
+        pass
 
     @validate_selection
     def debug_action(self, *args):
-        # pass
-        self.insert_action()
-
+        pass
         # self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
         # self.select(ItemSelection.PREVIOUS)
         # cur_row = self.list_view.selectedIndexes()[0]

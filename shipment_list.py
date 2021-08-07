@@ -2,7 +2,7 @@ import settings
 import pandas as pd
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import Qt
-from additional import AbstractDataFrameModel
+from additional import AbstractDataFrameModel, Direction
 
 
 # -------------------- QTableView --------------------
@@ -28,6 +28,11 @@ class ShipmentListView(QtWidgets.QTableView):
                     move_step = -settings.default_box_options.get('columns')
                 elif e.modifiers() == Qt.ControlModifier:       # at the top on CTRL + UP
                     move_step = -selected.row()
+            elif e.key() == Qt.Key_Insert:          # insert row: INS: after selection; SHIFT + INS: before selection
+                if e.modifiers() == Qt.NoModifier:
+                    self.insert_free_row(Direction.AFTER)
+                elif e.modifiers() == Qt.ShiftModifier:
+                    self.insert_free_row(Direction.BEFORE)
 
         if move_step:
             destination = self.model().index(selected.row() + move_step, selected.column())
@@ -43,6 +48,16 @@ class ShipmentListView(QtWidgets.QTableView):
 
         self.setCurrentIndex(index)
         super(ShipmentListView, self).currentChanged(current, previous)
+
+    def insert_free_row(self, direction: Direction, keep_selection: bool = True):
+        selected = self.selectedIndexes()[0] if self.selectedIndexes() else None
+        if not selected:
+            return
+        columns_count = self.model().df.shape[1]
+        data = pd.Series([''] + ['-'] * (columns_count - 2) + [''], index=self.model().df.columns)
+        self.model().insert_row_at(selected.row() + direction[0], data)
+        if keep_selection:
+            self.selectRow(selected.row() + direction[1])
 
 
 # -------------------- QAbstractTableModel --------------------

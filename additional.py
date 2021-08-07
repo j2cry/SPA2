@@ -43,6 +43,11 @@ class ItemSelection(enum.Enum):
         return switcher
 
 
+class Direction(tuple):
+    BEFORE = (0, 1)
+    AFTER = (1, 0)
+
+
 # -------------------- QAbstractTableModel --------------------
 class AbstractDataFrameModel(QtCore.QAbstractTableModel):
     """ Parent abstract DataFrame-based model class for QTableView (map and list) """
