@@ -1,5 +1,7 @@
 import enum
 import typing
+from functools import wraps
+
 import pandas as pd
 from collections import defaultdict, namedtuple
 from PyQt5 import QtCore
@@ -44,8 +46,8 @@ class ItemSelection(enum.Enum):
 
 
 class Direction(tuple):
-    BEFORE = (0, 1)
-    AFTER = (1, 0)
+    BACKWARD = (0, 1)
+    FORWARD = (1, 0)
 
 
 # -------------------- QAbstractTableModel --------------------
@@ -104,13 +106,21 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
 
 
 # -------------------- Decorators --------------------
-def validate_selection(method):
-    """ Check if item is selected else return False """
-    # todo сделать универсальным: сейчас он применим только внутри класса ShipmentPackingAssistantUI
-    def wrapper(self, *args):
-        selected = selected[0] if (selected := self.list_view.selectedIndexes()) else None
-        if not selected:
-            return lambda: False
-        args = (selected, *args)
-        return method(self, *args)
-    return wrapper
+def validate_selection(path: str = ''):
+    """ Check if item is selected else return None. Decorated function must receive kwargs or `selected` keyword.
+        :param path
+            Path from self to selectedIndexes excluding self. and .selectIndexes points. Use `.` as separator """
+    def validator(method):
+        @wraps(method)
+        def wrapper(self, *args, **kwargs):
+            obj = self          # find selectIndexes
+            for attr_name in f'{path}.selectedIndexes'.split('.'):
+                if not attr_name:
+                    continue
+                obj = getattr(obj, attr_name, None)
+                if not obj:
+                    raise ValueError(f'Cannot find attribute `{attr_name}` at `{obj}` in decorator!')
+            selected = selected[0] if (selected := obj()) else None
+            return method(self, *args, selected=selected, **kwargs) if selected else None
+        return wrapper
+    return validator

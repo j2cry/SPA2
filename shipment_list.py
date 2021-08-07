@@ -2,62 +2,83 @@ import settings
 import pandas as pd
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import Qt
-from additional import AbstractDataFrameModel, Direction
+from additional import AbstractDataFrameModel, Direction, validate_selection
 
 
 # -------------------- QTableView --------------------
 class ShipmentListView(QtWidgets.QTableView):
     def keyPressEvent(self, e: QtGui.QKeyEvent) -> None:
         selected = self.selectedIndexes()[0] if self.selectedIndexes() else None
-        move_step = 0
 
         if selected:
             if e.key() == Qt.Key_Enter:         # select next on Enter
                 self.selectRow(selected.row() + 1)
-            elif e.key() == Qt.Key_Down:
-                if e.modifiers() == Qt.ShiftModifier:           # one row down on SHIFT + DOWN
-                    move_step = 1
-                elif e.modifiers() == Qt.AltModifier:           # one box row down on ALT + DOWN
-                    move_step = settings.default_box_options.get('columns')
-                elif e.modifiers() == Qt.ControlModifier:       # at the bottom on CTRL + DOWN
-                    move_step = self.model().rowCount() - selected.row() - 1
-            elif e.key() == Qt.Key_Up:
-                if e.modifiers() == Qt.ShiftModifier:           # one row up on SHIFT + UP
-                    move_step = -1
-                elif e.modifiers() == Qt.AltModifier:           # one box row up on ALT + DOWN
-                    move_step = -settings.default_box_options.get('columns')
-                elif e.modifiers() == Qt.ControlModifier:       # at the top on CTRL + UP
-                    move_step = -selected.row()
-            elif e.key() == Qt.Key_Insert:          # insert row: INS: after selection; SHIFT + INS: before selection
-                if e.modifiers() == Qt.NoModifier:
-                    self.insert_free_row(Direction.AFTER)
-                elif e.modifiers() == Qt.ShiftModifier:
-                    self.insert_free_row(Direction.BEFORE)
-
-        if move_step:
-            destination = self.model().index(selected.row() + move_step, selected.column())
-            self.model().move_row_to(selected, destination)
-            self.selectRow(selected.row() + move_step)
-            return
-
+            # moving row
+            elif ((down := (e.key() == Qt.Key_Down)) or not (down := (e.key() != Qt.Key_Up))) \
+                    and e.modifiers() != Qt.NoModifier:
+                self.move_row(Direction.FORWARD if down else Direction.BACKWARD, modifiers=e.modifiers())
+                return
+            # inserting row
+            elif e.key() == Qt.Key_Insert:
+                self.insert_free_row(modifiers=e.modifiers())
+            # removing row
+            elif (e.key() == Qt.Key_Delete) and (e.modifiers() == Qt.ShiftModifier):
+                self.remove_row(selected.row())
         super(ShipmentListView, self).keyPressEvent(e)
 
     def currentChanged(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex) -> None:
-        # if current.row() == previous.row():
         index = self.model().index(current.row(), self.model().weight_column_index)
-
         self.setCurrentIndex(index)
         super(ShipmentListView, self).currentChanged(current, previous)
 
-    def insert_free_row(self, direction: Direction, keep_selection: bool = True):
-        selected = self.selectedIndexes()[0] if self.selectedIndexes() else None
-        if not selected:
-            return
+    @validate_selection()
+    def move_row(self, direction: Direction, modifiers=QtWidgets.QApplication.keyboardModifiers(), *, selected=None):
+        """ Move selected row to direction by step """
+        move_step = 0
+        if direction == Direction.BACKWARD:
+            if modifiers == Qt.ShiftModifier:  # one row up on SHIFT + UP
+                move_step = -settings.move_step[0]
+            elif modifiers == Qt.AltModifier:  # one box row up on ALT + DOWN
+                move_step = -settings.move_step[1]
+            elif modifiers == Qt.ControlModifier:  # at the top on CTRL + UP
+                move_step = -selected.row()
+        elif direction == Direction.FORWARD:
+            if modifiers == Qt.ShiftModifier:  # one row up on SHIFT + UP
+                move_step = settings.move_step[0]
+            elif modifiers == Qt.AltModifier:  # one box row up on ALT + DOWN
+                move_step = settings.move_step[1]
+            elif modifiers == Qt.ControlModifier:  # at the top on CTRL + UP
+                move_step = self.model().rowCount() - selected.row() - 1
+        if move_step:
+            destination = self.model().index(selected.row() + move_step, selected.column())
+            self.model().move_row_to(selected.row(), destination.row())
+            self.selectRow(selected.row() + move_step)
+            return True
+        else:
+            return False
+
+    @validate_selection()
+    def insert_free_row(self, modifiers=QtWidgets.QApplication.keyboardModifiers(), *, keep_selection: bool = True,
+                        selected: QtCore.QModelIndex = None):
+        """ Insert one free row to direction and keeps selection back if required """
+        # check if SHIFT is pressed
+        direction = Direction.FORWARD if (int(modifiers) & Qt.ShiftModifier) == Qt.ShiftModifier else Direction.BACKWARD
+        # check if ALT is pressed
+        rows_amount = settings.insert_many if (int(modifiers) & Qt.AltModifier) == Qt.AltModifier else 1
+
         columns_count = self.model().df.shape[1]
-        data = pd.Series([''] + ['-'] * (columns_count - 2) + [''], index=self.model().df.columns)
+        data = pd.DataFrame([[''] + ['-'] * (columns_count - 2) + ['']] * rows_amount, columns=self.model().df.columns)
         self.model().insert_row_at(selected.row() + direction[0], data)
         if keep_selection:
-            self.selectRow(selected.row() + direction[1])
+            self.selectRow(selected.row() + direction[1] * rows_amount)
+
+    @validate_selection()
+    def remove_row(self, *args, keep_selection: bool = True, selected: QtCore.QModelIndex = None):
+        """ Remove selected row """
+        self.model().remove_row_at(selected.row())
+        if keep_selection:
+            row = row if (row := selected.row()) < self.model().rowCount() else row - 1
+            self.selectRow(row)
 
 
 # -------------------- QAbstractTableModel --------------------
@@ -78,8 +99,6 @@ class ShipmentListModel(AbstractDataFrameModel):
             return str(self._df.iloc[index.row(), index.column()])
         elif role == Qt.TextAlignmentRole:        # for first column in list set left text alignment
             return Qt.AlignVCenter if index.column() == 0 else Qt.AlignCenter
-        # elif role == Qt.BackgroundColorRole:
-        #     return QtGui.QColor(50, 50, 50, 50)
         # if role == Qt.FontRole:
         #     return QFont('Courier New')
 
@@ -93,18 +112,18 @@ class ShipmentListModel(AbstractDataFrameModel):
         """ Return index of column named settings.code_column """
         return self.df.columns.get_loc(settings.code_column)
 
-    def move_row_to(self, source: QtCore.QModelIndex, destination: QtCore.QModelIndex):
+    def move_row_to(self, source: int, destination: int):
         """ Move row from source to destination and updates dependent model """
-        if not source.isValid() or not destination.isValid():
+        source_index = self.index(source, 0)
+        destination_index = self.index(destination, 0)
+        if not source_index.isValid() or not destination_index.isValid():
             return False
 
         index = self.df.index.to_list()
-        item = index.pop(source.row())
-        index.insert(destination.row(), item)
+        item = index.pop(source)
+        index.insert(destination, item)
         self.df = self.df.reindex(index).reset_index(drop=True)
-
-        # self._update_dependent_models()
-        self._update_dependent_models(self.index(source.row(), 0), self.index(destination.row(), 0))
+        self._update_dependent_models(source_index, destination_index)
         return True
 
     def insert_row_at(self, row: int, data: pd.Series):
@@ -112,6 +131,13 @@ class ShipmentListModel(AbstractDataFrameModel):
         df_a = self.df.iloc[:row]
         df_b = self.df.iloc[row:]
         self.df = df_a.append(data, ignore_index=True).append(df_b).reset_index(drop=True)
+        self._update_dependent_models()
+
+    def remove_row_at(self, row: int):
+        """ Remove row at row index """
+        df_a = self.df.iloc[:row]
+        df_b = self.df.iloc[row + 1:]
+        self.df = df_a.append(df_b).reset_index(drop=True)
         self._update_dependent_models()
 
 

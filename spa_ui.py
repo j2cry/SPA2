@@ -38,6 +38,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         # initialize models for tables
         self.shipment = ShipmentModel()
+        self.shipment.bind_ui_updater(self.update_ui)
         self.list_view.setModel(self.shipment.list_model)
         self.map_view.setModel(self.shipment.map_model)
 
@@ -65,8 +66,12 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         # show form
         self.show()
 
+    def update_ui(self):
+        """ Update labels on frame """
+        self.boxes_amount.setText(self.shipment.box_amount)
+
     def back_selection(self, selection_range):
-        """ Update selection on another view on caller-vew selection changed """
+        """ Update selection on another view on caller-vew selection changed. """
         selected_length = len(selection_range.indexes())
 
         if selected_length == 1:        # back select in list
@@ -128,17 +133,15 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
     def insert_action(self):
         """ Insert free row into shipment list """
         modifiers = QtWidgets.QApplication.keyboardModifiers()
-        if modifiers == Qt.NoModifier:              # as default insert AFTER
-            self.list_view.insert_free_row(Direction.AFTER)
-        elif modifiers == Qt.ShiftModifier:         # with SHIFT insert BEFORE
-            self.list_view.insert_free_row(Direction.BEFORE)
+        self.list_view.insert_free_row(modifiers=modifiers)
 
     def remove_action(self):
         """ Remove selected row from shipment list """
-        pass
+        self.list_view.remove_row()
 
-    @validate_selection
-    def debug_action(self, *args):
+    @validate_selection('list_view')
+    def debug_action(self, *args, selected=None, **kwargs):
+        print(selected)
         pass
         # self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
         # self.select(ItemSelection.PREVIOUS)

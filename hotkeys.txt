@@ -6,8 +6,9 @@ Hotkeys for shipment list edit:
     CTRL + UP/DOWN:     move selected row to the top/bottom of the list
 
 2. Inserting
-    INSERT:             insert free row after selection
-    SHIFT + INSERT:     insert free row before selection
+    INSERT:             insert free row before selection
+    SHIFT + INSERT:     insert free row after selection
+    hold ALT:           insert free rows before/after as many as columns in the box
 
 3. Deleting
-    not implemented yet
+    SHIFT + DELETE:     remove selected row

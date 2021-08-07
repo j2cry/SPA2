@@ -19,6 +19,7 @@ class ShipmentModel:
         self.box_options = BoxOptions(*[v if k not in kwargs.keys() else kwargs.get(k)
                                         for k, v in settings.default_box_options.items()])
 
+        self.update_ui_func = None
         # if df is not specified generate new one with given columns
         df = kwargs.get('df', pd.DataFrame(columns=kwargs.get('columns', settings.default_columns)))
         self.columns = df.columns
@@ -26,6 +27,10 @@ class ShipmentModel:
 
         self.list_model = ShipmentListModel(df, self.__update_map_value)
         self.map_model = ShipmentMapModel(self.list_to_map(), self.__map_index_validate)
+
+    def bind_ui_updater(self, func):
+        """ Bind function to update UI """
+        self.update_ui_func = func
 
     def __update_map_value(self, start: QtCore.QModelIndex = None, end: QtCore.QModelIndex = None):
         """ Update shipment map cell value according to list item at index.
@@ -75,12 +80,20 @@ class ShipmentModel:
         array, indexes = [], []
         for index in range_generator(0, samples.size, self.box_options.columns):
             row = (index // self.box_options.columns) % self.box_options.rows + 1
-            array.append(samples.values[index:index + self.box_options.columns])
+            row_values = samples.values[index:index + self.box_options.columns]
+            if len(array) == 0 and (delta := len(self.map_columns) - row_values.size) > 0:
+                row_values = np.append(row_values, [''] * delta)
+            array.append(row_values)
             indexes.append(row)
             # add separators
             if row == self.box_options.rows:
                 array.extend([[''] * self.box_options.columns] * self.box_options.separator)
                 indexes.extend([''] * self.box_options.separator)
+
+        if self.update_ui_func:
+            self.update_ui_func()
+        # if self.update_ui_func:
+        #     self.update_ui_func()
         return pd.DataFrame(array, index=indexes, columns=self.map_columns).fillna('')
 
     def load(self, df: pd.DataFrame):
