@@ -13,17 +13,26 @@ class ShipmentListView(QtWidgets.QTableView):
         if selected:
             if e.key() == Qt.Key_Enter:         # select next on Enter
                 self.selectRow(selected.row() + 1)
-            # moving row
-            elif ((down := (e.key() == Qt.Key_Down)) or not (down := (e.key() != Qt.Key_Up))) \
-                    and e.modifiers() != Qt.NoModifier:
-                self.move_row(Direction.FORWARD if down else Direction.BACKWARD, modifiers=e.modifiers())
-                return
+            if (down := (e.key() == Qt.Key_Left)) or (e.key() == Qt.Key_Right):
+                self.selectRow(selected.row() - (1 if down else -1))
+            # moving row or fast selecting
+            elif (down := (e.key() == Qt.Key_Down)) or (e.key() == Qt.Key_Up):
+                if self.move_row(Direction.FORWARD if down else Direction.BACKWARD, modifiers=e.modifiers()):
+                    return
+                elif (int(e.modifiers()) & Qt.AltModifier) == Qt.AltModifier:     # if ALT +UP/DOWN
+                    step = settings.default_box_options.get('columns', 1)
+                    self.selectRow(selected.row() + (step if down else -step))
+                    return
+                elif (int(e.modifiers()) & Qt.ControlModifier) == Qt.ControlModifier:       # if CTRL + UP/DOWN
+                    step = self.model().rowCount() - 1 if down else 0
+                    self.selectRow(step)
+                    return
             # inserting row
             elif e.key() == Qt.Key_Insert:
                 self.insert_free_row(modifiers=e.modifiers())
             # removing row
             elif (e.key() == Qt.Key_Delete) and (e.modifiers() == Qt.ShiftModifier):
-                self.remove_row(selected.row())
+                self.remove_row()
         super(ShipmentListView, self).keyPressEvent(e)
 
     def currentChanged(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex) -> None:
@@ -34,20 +43,20 @@ class ShipmentListView(QtWidgets.QTableView):
     @validate_selection()
     def move_row(self, direction: Direction, modifiers=QtWidgets.QApplication.keyboardModifiers(), *, selected=None):
         """ Move selected row to direction by step """
+        if not (int(modifiers) & Qt.ShiftModifier) == Qt.ShiftModifier:
+            return False
         move_step = 0
         if direction == Direction.BACKWARD:
-            if modifiers == Qt.ShiftModifier:  # one row up on SHIFT + UP
-                move_step = -settings.move_step[0]
-            elif modifiers == Qt.AltModifier:  # one box row up on ALT + DOWN
+            move_step = -settings.move_step[0]                  # one row up on SHIFT + UP
+            if (int(modifiers) & Qt.AltModifier) == Qt.AltModifier:         # if ALT pressed
                 move_step = -settings.move_step[1]
-            elif modifiers == Qt.ControlModifier:  # at the top on CTRL + UP
+            elif (int(modifiers) & Qt.ControlModifier) == Qt.ControlModifier:       # if CTRL pressed
                 move_step = -selected.row()
         elif direction == Direction.FORWARD:
-            if modifiers == Qt.ShiftModifier:  # one row up on SHIFT + UP
-                move_step = settings.move_step[0]
-            elif modifiers == Qt.AltModifier:  # one box row up on ALT + DOWN
+            move_step = settings.move_step[0]                   # one row down on SHIFT + UP
+            if (int(modifiers) & Qt.AltModifier) == Qt.AltModifier:         # if ALT pressed
                 move_step = settings.move_step[1]
-            elif modifiers == Qt.ControlModifier:  # at the top on CTRL + UP
+            elif (int(modifiers) & Qt.ControlModifier) == Qt.ControlModifier:  # if CTRL pressed
                 move_step = self.model().rowCount() - selected.row() - 1
         if move_step:
             destination = self.model().index(selected.row() + move_step, selected.column())
@@ -73,11 +82,16 @@ class ShipmentListView(QtWidgets.QTableView):
             self.selectRow(selected.row() + direction[1] * rows_amount)
 
     @validate_selection()
-    def remove_row(self, *args, keep_selection: bool = True, selected: QtCore.QModelIndex = None):
+    def remove_row(self, keep_selection: bool = True, selected: QtCore.QModelIndex = None):
         """ Remove selected row """
         self.model().remove_row_at(selected.row())
         if keep_selection:
-            row = row if (row := selected.row()) < self.model().rowCount() else row - 1
+            if (row := selected.row()) == 0:
+                row = 0
+            elif row == self.model().rowCount():
+                row = self.model().rowCount() - 1
+            else:
+                row -= 1
             self.selectRow(row)
 
 
