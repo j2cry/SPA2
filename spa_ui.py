@@ -85,6 +85,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.insert_popup.exec_(point)
 
     def set_shipment_number(self, value):
+        """ Set shipment number """
         self.shipment.number = value
 
     def update_ui(self):
@@ -158,13 +159,26 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         if self.shipment.list_model.rowCount() == 0:
             self.status_bar.showMessage(f'No data to export!')
             return
+
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        if (int(modifiers) & Qt.ShiftModifier) == Qt.ShiftModifier:
+            dialog = QtWidgets.QFileDialog(caption='Export shipment map',
+                                           filter='Excel files (*.xls *.xlsx);;')
+            dialog.setFileMode(QFileDialog.AnyFile)
+            dialog.setAcceptMode(QFileDialog.AcceptSave)
+            if not dialog.exec():
+                self.status_bar.showMessage(f'File was not selected.')
+                return
+            filepath = dialog.selectedFiles()[0]
+            if not filepath.endswith('.xls') and not filepath.endswith('.xlsx'):
+                filepath += '.xls'
+            print(filepath)
+        else:
+            filepath = f'Map {self.shipment.number}.xls'
+        sheet_name = f'Map {self.shipment.number}'
+
+        writer = pd.ExcelWriter(filepath, engine='xlsxwriter')
         data = self.shipment.list_to_map(export_mode=True).reset_index()
-
-        # с форматированием header_style
-        file_path = f'Map {self.shipment_number.text()}.xls'
-        sheet_name = f'Map {self.shipment_number.text()}'
-
-        writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
         data.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
         # create styles
         workbook = writer.book
@@ -194,7 +208,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             sheet.conditional_format(first_row + 2, first_col, last_row, last_col,
                                      {'type': 'no_errors', 'format': border_style})
         writer.save()
-        self.status_bar.showMessage(f'File saved "{file_path}"')
+        self.status_bar.showMessage(f'File saved "{filepath}"')
 
     def insert_action(self, add_modifiers=None):
         """ Insert free row into shipment list """

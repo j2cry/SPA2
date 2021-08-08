@@ -12,3 +12,6 @@ Hotkeys for shipment list edit:
 
 3. Deleting
     SHIFT + DELETE:     remove selected row
+
+EXPORT:
+1. hold SHIFT:          open save dialog

@@ -1,4 +1,5 @@
 """ Default settings """
+import pathlib
 
 default_box_options = {'rows': 9,
                        'columns': 9,
@@ -14,6 +15,7 @@ color_na = (10, 10, 10, 50)             # RGBA background color for not availabl
 move_step = (1, default_box_options['columns'])             # default steps for rows moving: SHIFT, ALT
 insert_many = default_box_options['columns']                # default rows amount for multi-insertion
 
+# export parameters
 
 # export Excel styles
 export_style_border = {
