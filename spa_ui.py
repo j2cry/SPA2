@@ -1,3 +1,4 @@
+import datetime
 import pathlib
 import re
 import sys
@@ -31,8 +32,8 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.export_button = self.findChild(QtWidgets.QPushButton, 'export_button')
         self.work_button = self.findChild(QtWidgets.QPushButton, 'work_button')
         self.current_sample = self.findChild(QtWidgets.QLabel, 'current_sample')
-        self.pos_from = self.findChild(QtWidgets.QPushButton, 'pos_from')
-        self.pos_to = self.findChild(QtWidgets.QPushButton, 'pos_to')
+        self.pos_from = self.findChild(QtWidgets.QLabel, 'pos_from')
+        self.pos_to = self.findChild(QtWidgets.QLabel, 'pos_to')
         self.insert_button = self.findChild(QtWidgets.QPushButton, 'insert_button')
         self.remove_button = self.findChild(QtWidgets.QPushButton, 'remove_button')
 
@@ -51,6 +52,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         self.list_view.selectionModel().selectionChanged.connect(self.back_selection)
         self.map_view.selectionModel().selectionChanged.connect(self.back_selection)
+        self.list_view.selectionModel().selectionChanged.connect(self.update_ui)
         # self.list_view.setItemDelegate(ShipmentListDelegate())
 
         # setup components look - this takes too much resources
@@ -68,7 +70,11 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
     def update_ui(self):
         """ Update labels on frame """
+        code, start, end = info if (info := self.list_view.get_selected_sample_info()) else ('', '', '')
         self.boxes_amount.setText(self.shipment.box_amount)
+        self.current_sample.setText(code)
+        self.pos_from.setText(start)
+        self.pos_to.setText(end)
 
     def back_selection(self, selection_range):
         """ Update selection on another view on caller-vew selection changed. """
@@ -125,6 +131,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         # get shipment number from path
         num = re.search(r'\d+', pathlib.Path(filepath).name)
         self.shipment_number.setText(num.group(0) if num else '')
+        self.list_view.selectRow(0)
 
     def export_map(self):
         """ Save shipment map to Excel file """

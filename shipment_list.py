@@ -1,3 +1,4 @@
+import re
 import settings
 import pandas as pd
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -41,7 +42,25 @@ class ShipmentListView(QtWidgets.QTableView):
         super(ShipmentListView, self).currentChanged(current, previous)
 
     @validate_selection()
-    def move_row(self, direction: Direction, modifiers=QtWidgets.QApplication.keyboardModifiers(), *, selected=None):
+    def get_selected_sample_info(self, *, selected: QtCore.QModelIndex = None):
+        """ Returns current sample code, current and end positions of sample """
+        current_sample = self.model().df.iloc[selected.row()]
+        sample_code = self.model().data(selected)
+        sample_number = regex.group(1) if (regex := re.match(r'(\d+)\D', sample_code)) else None
+        start_pos, end_pos = None, None
+
+        # find positions
+        current_pos = '.'.join(current_sample[['st0', 'st1', 'st2', 'st3', 'st4']].values.astype('str'))
+        condition = self.model().df[settings.code_column].str.match(sample_number)
+        data = self.model().df.loc[condition, :]
+        if set(settings.default_columns).issubset(data.columns):
+            # start_pos = '.'.join(data.iloc[0][['st0', 'st1', 'st2', 'st3', 'st4']].values.astype('str'))
+            end_pos = '.'.join(data.iloc[-1][['st0', 'st1', 'st2', 'st3', 'st4']].values.astype('str'))
+        return sample_code, current_pos, end_pos
+
+    @validate_selection()
+    def move_row(self, direction: Direction, modifiers=QtWidgets.QApplication.keyboardModifiers(), *,
+                 selected: QtCore.QModelIndex = None):
         """ Move selected row to direction by step """
         if not (int(modifiers) & Qt.ShiftModifier) == Qt.ShiftModifier:
             return False
