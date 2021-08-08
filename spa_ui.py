@@ -1,11 +1,14 @@
 import pathlib
 import re
 import sys
+from functools import partial
+
 import pandas as pd
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
-# from PyQt5.Qt import Qt
+from PyQt5.Qt import Qt
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
+import settings
 from additional import ItemSelection, validate_selection
 from shipment_list import ShipmentListView
 from shipment_model import ShipmentModel
@@ -35,6 +38,15 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.insert_button = self.findChild(QtWidgets.QPushButton, 'insert_button')
         self.remove_button = self.findChild(QtWidgets.QPushButton, 'remove_button')
 
+        # create insert popup
+        self.insert_popup = QtWidgets.QMenu(self)
+        one_row_insert = QtWidgets.QAction('1 row', self)
+        one_row_insert.triggered.connect(self.insert_action)
+        multi_insert = QtWidgets.QAction(f'{settings.default_box_options.get("columns")} rows', self)
+        multi_insert.triggered.connect(partial(self.insert_action, Qt.AltModifier))
+
+        self.insert_popup.addAction(one_row_insert)
+        self.insert_popup.addAction(multi_insert)
         # initialize models for tables
         self.shipment = ShipmentModel()
         self.shipment.bind_ui_updater(self.update_ui)
@@ -42,7 +54,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.map_view.setModel(self.shipment.map_model)
 
         # bind actions
-        self.insert_button.clicked.connect(self.insert_action)
+        self.insert_button.clicked.connect(self.show_insert_popup)
         self.remove_button.clicked.connect(self.remove_action)
         self.import_button.clicked.connect(self.import_shipment)
         self.export_button.clicked.connect(self.export_map)
@@ -65,6 +77,10 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         # show form
         self.show()
+
+    def show_insert_popup(self):
+        point = self.insert_button.cursor().pos()
+        self.insert_popup.exec_(point)
 
     def update_ui(self):
         """ Update labels on frame """
@@ -117,7 +133,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
     def import_shipment(self):
         """ Create shipment model from Excel file """
         list_file = QtWidgets.QFileDialog(caption='Open shipment list',
-                                          filter='Excel files (*.xls, *.xlsx);')
+                                          filter='Excel files (*.xls *.xlsx);;')
         list_file.setFileMode(QFileDialog.ExistingFile)
         if not list_file.exec():
             self.status_bar.showMessage(f'File was not opened.')
@@ -136,9 +152,9 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         """ Save shipment map to Excel file """
         pass
 
-    def insert_action(self):
+    def insert_action(self, add_modifiers=None):
         """ Insert free row into shipment list """
-        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        modifiers = int(QtWidgets.QApplication.keyboardModifiers()) | add_modifiers
         self.list_view.insert_free_row(modifiers=modifiers)
 
     def remove_action(self):

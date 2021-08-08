@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>868</width>
+    <width>882</width>
     <height>436</height>
    </rect>
   </property>
@@ -157,6 +157,9 @@
           <width>32</width>
           <height>32</height>
          </size>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;WARNING! The real number of samples does not match the expected.&lt;/p&gt;&lt;p&gt;Double-check the information about this sample.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
          <string/>
@@ -395,6 +398,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="insert_button">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hold SHIFT to insert after selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="whatsThis">
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hold SHIFT to insert BEFORE selection.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
