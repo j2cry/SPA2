@@ -3,7 +3,7 @@ import typing
 import pandas as pd
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.Qt import Qt
-from additional import AbstractDataFrameModel
+from additional import AbstractDataFrameModel, range_generator
 
 
 # -------------------- QTableView --------------------
@@ -14,6 +14,12 @@ class ShipmentMapView(QtWidgets.QTableView):
             return QtCore.QItemSelectionModel.SelectionFlags(QtCore.QItemSelectionModel.Deselect)
         else:
             return super(ShipmentMapView, self).selectionCommand(index, event)
+
+    def dataChanged(self, topLeft: QtCore.QModelIndex, bottomRight: QtCore.QModelIndex,
+                    roles: typing.Iterable[int] = ...) -> None:
+        for row in range_generator(topLeft.row(), bottomRight.row() + 1):
+            self.resizeRowToContents(row)
+        super(ShipmentMapView, self).dataChanged(topLeft, bottomRight, roles)
 
 
 # -------------------- QAbstractTableModel --------------------

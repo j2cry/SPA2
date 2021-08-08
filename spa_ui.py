@@ -49,7 +49,6 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.insert_popup.addAction(multi_insert)
         # initialize models for tables
         self.shipment = ShipmentModel()
-        self.shipment.bind_ui_updater(self.update_ui)
         self.list_view.setModel(self.shipment.list_model)
         self.map_view.setModel(self.shipment.map_model)
 
@@ -61,18 +60,18 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.export_button.clicked.connect(self.export_map)
         self.work_button.clicked.connect(self.debug_action)
 
+        # bind events
         self.list_view.selectionModel().selectionChanged.connect(self.back_selection)
+        self.list_view.selectionModel().selectionChanged.connect(self.update_ui_labels)
+        self.list_view.model().dataChanged.connect(self.shipment.update_map_value)
         self.map_view.selectionModel().selectionChanged.connect(self.back_selection)
-        self.list_view.selectionModel().selectionChanged.connect(self.update_ui)
         # self.list_view.setItemDelegate(ShipmentListDelegate())
 
         # setup components look - this takes too much resources
         # NOTE: THIS IS THE REASON OF UI LAGS
-        self.list_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.list_view.verticalHeader().setDefaultSectionSize(20)
         self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-
-        self.map_view.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.map_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.map_view.setFont(self.font)
 
@@ -88,7 +87,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         """ Set shipment number """
         self.shipment.number = value
 
-    def update_ui(self):
+    def update_ui_labels(self):
         """ Update labels on frame """
         self.boxes_amount.setText(self.shipment.box_amount)
         if info := self.list_view.get_selected_sample_info():

@@ -54,7 +54,7 @@ class Direction(tuple):
 # -------------------- QAbstractTableModel --------------------
 class AbstractDataFrameModel(QtCore.QAbstractTableModel):
     """ Parent abstract DataFrame-based model class for QTableView (map and list) """
-    def __init__(self, df: pd.DataFrame, update_function: typing.Callable = None):
+    def __init__(self, df: pd.DataFrame):
         """ Initialize model
             :param df
                 model data as DataFrame
@@ -66,7 +66,6 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
         super(AbstractDataFrameModel, self).__init__()
         self._df = None
         self._df = df
-        self._update_dependent_models = update_function
 
     def rowCount(self, parent=None):
         return self._df.shape[0]
@@ -88,9 +87,7 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
             return False
         if role == Qt.EditRole:
             self._df.iloc[index.row(), index.column()] = value
-            # call function to update dependent models
-            if self._update_dependent_models is not None:
-                self._update_dependent_models(index)
+            self.dataChanged.emit(index, index, [Qt.DisplayRole])
             return True
         return False
 
@@ -104,6 +101,7 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
         self.beginResetModel()
         self._df = value
         self.endResetModel()
+        self.dataChanged.emit(self.index(0, 0), self.index(self.df.shape[0] - 1, self.df.shape[1] - 1))
 
 
 # -------------------- Decorators --------------------

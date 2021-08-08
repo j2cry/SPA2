@@ -19,46 +19,30 @@ class ShipmentModel:
         self.box_options = BoxOptions(*[v if k not in kwargs.keys() else kwargs.get(k)
                                         for k, v in settings.default_box_options.items()])
 
-        self.update_ui_func = None
         # if df is not specified generate new one with given columns
         df = kwargs.get('df', pd.DataFrame(columns=kwargs.get('columns', settings.default_columns)))
         self.columns = df.columns
         self.map_columns = kwargs.get('map_columns', list(ascii_lowercase[:self.box_options.columns]))
 
-        self.list_model = ShipmentListModel(df, self.__update_map_value)
+        self.list_model = ShipmentListModel(df)
         self.map_model = ShipmentMapModel(self.list_to_map(), self.__map_index_validate)
         self.number = ''
 
-    def bind_ui_updater(self, func):
-        """ Bind function to update UI """
-        self.update_ui_func = func
-
-    def __update_map_value(self, start: QtCore.QModelIndex = None, end: QtCore.QModelIndex = None):
+    def update_map_value(self, start: QtCore.QModelIndex, end: QtCore.QModelIndex):
         """ Update shipment map cell value according to list item at index.
             If index is not specified rebuild map """
-        if start and end:
-            # weights = self.list_model.df.loc[start.row():end.row(), settings.weight_column]
-            # codes = self.list_model.df.loc[start.row():end.row(), settings.code_column]
-            for i in range_generator(start.row(), end.row(), endpoint=True):
-                weight = self.list_model.df.loc[i, settings.weight_column]
-                code = self.list_model.df.loc[i, settings.code_column]
-                value = f'{code} {weight}' if weight else code
-                map_index = self.item_position(i)
-                self.map_model.setData(map_index, value, Qt.EditRole)
+        # convert list indexes to map indexes
+        start_map_index = self.item_position(start.row())
+        # end_map_index = self.item_position(end.row())
 
-            map_start = self.item_position(start.row())
-            map_end = self.item_position(end.row())
-            self.map_model.dataChanged.emit(map_start, map_end, [Qt.DisplayRole])
-        if start:
+        if start == end:
             # collect value
             weight = self.list_model.df.loc[start.row(), settings.weight_column]
             code = self.list_model.df.loc[start.row(), settings.code_column]
             value = f'{code} {weight}' if weight else code
-            # create QModelIndex and set data
-            map_index = self.item_position(start.row())
-            self.map_model.setData(map_index, value, Qt.EditRole)
-            self.map_model.dataChanged.emit(map_index, map_index, [Qt.DisplayRole])
+            self.map_model.setData(start_map_index, value, Qt.EditRole)
         else:
+            # todo делать ли через df.values.flatten() self потом добавить до фулкоробки и reshape?
             self.map_model.df = self.list_to_map()
 
     def __map_index_validate(self, index: QtCore.QModelIndex) -> bool:
@@ -99,8 +83,8 @@ class ShipmentModel:
                 array.extend([[''] * self.box_options.columns] * self.box_options.separator)
                 indexes.extend([''] * self.box_options.separator)
 
-        if self.update_ui_func:
-            self.update_ui_func()
+        # if self.update_ui_func:
+        #     self.update_ui_func()
         return pd.DataFrame(array, index=indexes, columns=self.map_columns).fillna('')
 
     def load(self, df: pd.DataFrame):

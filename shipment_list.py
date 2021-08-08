@@ -47,20 +47,28 @@ class ShipmentListView(QtWidgets.QTableView):
             alarm if real and used sample sizes differ """
         current_sample = self.model().df.iloc[selected.row()]
         sample_code = self.model().data(selected)
-        sample_number = regex.group(1) if (regex := re.match(r'(\d+)\D', sample_code)) else None
+        sample_number = regex.group(1) if (regex := re.match(r'(\d+)\D', sample_code)) else 'n/a'
         start_pos, end_pos = None, None
 
         # find positions
         current_pos = current_sample[['st0', 'st1', 'st2', 'st3', 'st4']].values
         condition = self.model().df[settings.code_column].str.match(sample_number)
         data = self.model().df.loc[condition, :]
+        if not data.shape[0]:
+            data = pd.DataFrame(current_sample).T
         if set(settings.default_columns).issubset(data.columns):
             start_pos = data.iloc[0][['st0', 'st1', 'st2', 'st3', 'st4']].values
             end_pos = data.iloc[-1][['st0', 'st1', 'st2', 'st3', 'st4']].values
 
+        if not sample_number:
+            return SampleInfo(sample_code, '.'.join(current_pos.astype('str')), '.'.join(end_pos.astype('str')), True)
+
         # continuity check
-        real_sample_size = end_pos[4] - start_pos[4] + 1 + \
-            (end_pos[3] - start_pos[3]) * settings.default_box_options.get('columns')
+        try:
+            real_sample_size = end_pos[4] - start_pos[4] + 1 + \
+                (end_pos[3] - start_pos[3]) * settings.default_box_options.get('columns')
+        except TypeError:
+            real_sample_size = 1
         alarm = real_sample_size != data.shape[0]
         return SampleInfo(sample_code, '.'.join(current_pos.astype('str')), '.'.join(end_pos.astype('str')), alarm)
 
@@ -103,6 +111,8 @@ class ShipmentListView(QtWidgets.QTableView):
         columns_count = self.model().df.shape[1]
         data = pd.DataFrame([[''] + ['-'] * (columns_count - 2) + ['']] * rows_amount, columns=self.model().df.columns)
         self.model().insert_row_at(selected.row() + direction[0], data)
+        for row in range(selected.row(), selected.row() + rows_amount):
+            self.resizeRowToContents(row)
         if keep_selection:
             self.selectRow(selected.row() + direction[1] * rows_amount)
 
@@ -116,7 +126,8 @@ class ShipmentListView(QtWidgets.QTableView):
             elif row == self.model().rowCount():
                 row = self.model().rowCount() - 1
             else:
-                row -= 1
+                pass
+                # row -= 1
             self.selectRow(row)
 
 
@@ -162,7 +173,7 @@ class ShipmentListModel(AbstractDataFrameModel):
         item = index.pop(source)
         index.insert(destination, item)
         self.df = self.df.reindex(index).reset_index(drop=True)
-        self._update_dependent_models(source_index, destination_index)
+        self.dataChanged.emit(source_index, destination_index, [Qt.DisplayRole])
         return True
 
     def insert_row_at(self, row: int, data: pd.Series):
@@ -170,14 +181,12 @@ class ShipmentListModel(AbstractDataFrameModel):
         df_a = self.df.iloc[:row]
         df_b = self.df.iloc[row:]
         self.df = df_a.append(data, ignore_index=True).append(df_b).reset_index(drop=True)
-        self._update_dependent_models()
 
     def remove_row_at(self, row: int):
         """ Remove row at row index """
         df_a = self.df.iloc[:row]
         df_b = self.df.iloc[row + 1:]
         self.df = df_a.append(df_b).reset_index(drop=True)
-        self._update_dependent_models()
 
 
 # -------------------- QStyledItemDelegate --------------------
