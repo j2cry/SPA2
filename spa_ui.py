@@ -1,15 +1,15 @@
+import settings
 import pathlib
 import re
 import sys
+import pandas as pd
 from functools import partial
 
-import pandas as pd
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from PyQt5.Qt import Qt
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-import settings
-from additional import ItemSelection, validate_selection
+from additional import ItemSelection, validate_selection, range_generator
 from shipment_list import ShipmentListView
 from shipment_model import ShipmentModel
 
@@ -54,6 +54,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.map_view.setModel(self.shipment.map_model)
 
         # bind actions
+        self.shipment_number.textChanged.connect(self.set_shipment_number)
         self.insert_button.clicked.connect(self.show_insert_popup)
         self.remove_button.clicked.connect(self.remove_action)
         self.import_button.clicked.connect(self.import_shipment)
@@ -79,8 +80,12 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.show()
 
     def show_insert_popup(self):
+        """ Show popup menu """
         point = self.insert_button.cursor().pos()
         self.insert_popup.exec_(point)
+
+    def set_shipment_number(self, value):
+        self.shipment.number = value
 
     def update_ui(self):
         """ Update labels on frame """
@@ -150,7 +155,46 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
     def export_map(self):
         """ Save shipment map to Excel file """
-        pass
+        if self.shipment.list_model.rowCount() == 0:
+            self.status_bar.showMessage(f'No data to export!')
+            return
+        data = self.shipment.list_to_map(export_mode=True).reset_index()
+
+        # с форматированием header_style
+        file_path = f'Map {self.shipment_number.text()}.xls'
+        sheet_name = f'Map {self.shipment_number.text()}'
+
+        writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
+        data.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
+        # create styles
+        workbook = writer.book
+        header_style = workbook.add_format(settings.export_style_headers)
+        cell_style = workbook.add_format(settings.export_style_cells)
+        border_style = workbook.add_format(settings.export_style_border)
+
+        sheet = writer.sheets[sheet_name]
+        # set column header style
+        sheet.set_column(0, 0, cell_format=header_style)
+        # set common style
+        sheet.set_column(1, self.shipment.box_options.columns, width=12, cell_format=cell_style)
+        sheet.set_default_row(30)
+
+        # iterate through blocks: set borders and box headers
+        for block in range_generator(0, int(self.shipment.box_amount)):
+            first_row = (2 + self.shipment.box_options.columns + self.shipment.box_options.separator) * block
+            last_row = first_row + self.shipment.box_options.rows + 1
+            first_col = 0
+            last_col = self.shipment.box_options.columns
+            # set box header style
+            sheet.set_row(first_row, cell_format=header_style)
+            sheet.set_row(first_row + 1, cell_format=header_style)
+            # set borders
+            sheet.conditional_format(first_row, first_col, first_row + 1, last_col,
+                                     {'type': 'no_blanks', 'format': border_style})
+            sheet.conditional_format(first_row + 2, first_col, last_row, last_col,
+                                     {'type': 'no_errors', 'format': border_style})
+        writer.save()
+        self.status_bar.showMessage(f'File saved "{file_path}"')
 
     def insert_action(self, add_modifiers=None):
         """ Insert free row into shipment list """

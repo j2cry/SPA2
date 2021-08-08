@@ -27,6 +27,7 @@ class ShipmentModel:
 
         self.list_model = ShipmentListModel(df, self.__update_map_value)
         self.map_model = ShipmentMapModel(self.list_to_map(), self.__map_index_validate)
+        self.number = ''
 
     def bind_ui_updater(self, func):
         """ Bind function to update UI """
@@ -70,7 +71,7 @@ class ShipmentModel:
         return str(np.ceil(self.list_model.df.shape[0] /
                            (self.box_options.columns * self.box_options.rows)).astype('int'))
 
-    def list_to_map(self) -> pd.DataFrame:
+    def list_to_map(self, export_mode=False) -> pd.DataFrame:
         """ Convert samples list (Series) to shipment map (DataFrame)"""
         samples = self.list_model.df[settings.code_column].copy()
         weights = self.list_model.df[settings.weight_column]
@@ -78,10 +79,18 @@ class ShipmentModel:
         samples.loc[weight_exists] += ' ' + weights.loc[weight_exists]
 
         array, indexes = [], []
-        for index in range_generator(0, samples.size, self.box_options.columns):
+        box_capacity = self.box_options.rows * self.box_options.columns
+        max_samples = samples.size if not export_mode else int(np.ceil(samples.size / box_capacity)) * box_capacity
+        for index in range_generator(0, max_samples, self.box_options.columns):
             row = (index // self.box_options.columns) % self.box_options.rows + 1
+            if export_mode and (row % self.box_options.rows) == 1:
+                array.append(['', f'{self.number}.{int((index + 1) / box_capacity + 1)}'] +
+                             [''] * (len(self.map_columns) - 2))
+                array.append(self.map_columns)
+                indexes.extend([np.NaN, np.NaN])
+
             row_values = samples.values[index:index + self.box_options.columns]
-            if len(array) == 0 and (delta := len(self.map_columns) - row_values.size) > 0:
+            if (delta := len(self.map_columns) - row_values.size) > 0:      # ?len(array) == 0 and
                 row_values = np.append(row_values, [''] * delta)
             array.append(row_values)
             indexes.append(row)
@@ -92,8 +101,6 @@ class ShipmentModel:
 
         if self.update_ui_func:
             self.update_ui_func()
-        # if self.update_ui_func:
-        #     self.update_ui_func()
         return pd.DataFrame(array, index=indexes, columns=self.map_columns).fillna('')
 
     def load(self, df: pd.DataFrame):
