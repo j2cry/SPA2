@@ -1,15 +1,12 @@
-import datetime
 import pathlib
 import re
 import sys
-
 import pandas as pd
-
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
-from PyQt5.Qt import Qt
+# from PyQt5.Qt import Qt
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-from additional import ItemSelection, validate_selection, Direction
+from additional import ItemSelection, validate_selection
 from shipment_list import ShipmentListView
 from shipment_model import ShipmentModel
 
@@ -34,6 +31,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.current_sample = self.findChild(QtWidgets.QLabel, 'current_sample')
         self.pos_from = self.findChild(QtWidgets.QLabel, 'pos_from')
         self.pos_to = self.findChild(QtWidgets.QLabel, 'pos_to')
+        self.alarm_label = self.findChild(QtWidgets.QLabel, 'alarm_label')
         self.insert_button = self.findChild(QtWidgets.QPushButton, 'insert_button')
         self.remove_button = self.findChild(QtWidgets.QPushButton, 'remove_button')
 
@@ -70,11 +68,12 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
     def update_ui(self):
         """ Update labels on frame """
-        code, start, end = info if (info := self.list_view.get_selected_sample_info()) else ('', '', '')
         self.boxes_amount.setText(self.shipment.box_amount)
-        self.current_sample.setText(code)
-        self.pos_from.setText(start)
-        self.pos_to.setText(end)
+        if info := self.list_view.get_selected_sample_info():
+            self.current_sample.setText(info.code)
+            self.pos_from.setText(info.position)
+            self.pos_to.setText(info.end_position)
+            self.alarm_label.setVisible(bool(info.alarm))
 
     def back_selection(self, selection_range):
         """ Update selection on another view on caller-vew selection changed. """
@@ -148,7 +147,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
     @validate_selection('list_view')
     def debug_action(self, *args, selected=None, **kwargs):
-        print(selected)
+        # откуда тут в args берется False?
         pass
         # self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
         # self.select(ItemSelection.PREVIOUS)

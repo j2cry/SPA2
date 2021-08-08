@@ -8,6 +8,7 @@ from PyQt5 import QtCore
 from PyQt5.Qt import Qt
 
 BoxOptions = namedtuple('BoxOptions', 'rows columns separator')
+SampleInfo = namedtuple('SampleInfo', 'code position end_position alarm')
 
 
 # -------------------- Generators --------------------

@@ -3,7 +3,7 @@ import settings
 import pandas as pd
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import Qt
-from additional import AbstractDataFrameModel, Direction, validate_selection
+from additional import AbstractDataFrameModel, Direction, validate_selection, SampleInfo
 
 
 # -------------------- QTableView --------------------
@@ -43,20 +43,26 @@ class ShipmentListView(QtWidgets.QTableView):
 
     @validate_selection()
     def get_selected_sample_info(self, *, selected: QtCore.QModelIndex = None):
-        """ Returns current sample code, current and end positions of sample """
+        """ Returns current sample code, current and end positions of sample,
+            alarm if real and used sample sizes differ """
         current_sample = self.model().df.iloc[selected.row()]
         sample_code = self.model().data(selected)
         sample_number = regex.group(1) if (regex := re.match(r'(\d+)\D', sample_code)) else None
         start_pos, end_pos = None, None
 
         # find positions
-        current_pos = '.'.join(current_sample[['st0', 'st1', 'st2', 'st3', 'st4']].values.astype('str'))
+        current_pos = current_sample[['st0', 'st1', 'st2', 'st3', 'st4']].values
         condition = self.model().df[settings.code_column].str.match(sample_number)
         data = self.model().df.loc[condition, :]
         if set(settings.default_columns).issubset(data.columns):
-            # start_pos = '.'.join(data.iloc[0][['st0', 'st1', 'st2', 'st3', 'st4']].values.astype('str'))
-            end_pos = '.'.join(data.iloc[-1][['st0', 'st1', 'st2', 'st3', 'st4']].values.astype('str'))
-        return sample_code, current_pos, end_pos
+            start_pos = data.iloc[0][['st0', 'st1', 'st2', 'st3', 'st4']].values
+            end_pos = data.iloc[-1][['st0', 'st1', 'st2', 'st3', 'st4']].values
+
+        # continuity check
+        real_sample_size = end_pos[4] - start_pos[4] + 1 + \
+            (end_pos[3] - start_pos[3]) * settings.default_box_options.get('columns')
+        alarm = real_sample_size != data.shape[0]
+        return SampleInfo(sample_code, '.'.join(current_pos.astype('str')), '.'.join(end_pos.astype('str')), alarm)
 
     @validate_selection()
     def move_row(self, direction: Direction, modifiers=QtWidgets.QApplication.keyboardModifiers(), *,
