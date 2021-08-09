@@ -1,3 +1,5 @@
+import timeit
+
 import settings
 import pandas as pd
 import numpy as np
@@ -26,6 +28,8 @@ class ShipmentModel:
 
         self.list_model = ShipmentListModel(df)
         self.map_model = ShipmentMapModel(self.list_to_map(), self.__map_index_validate)
+        self.list_model.dataChanged.connect(self.update_map_value)
+
         self.number = ''
 
     def update_map_value(self, start: QtCore.QModelIndex, end: QtCore.QModelIndex):
@@ -42,8 +46,9 @@ class ShipmentModel:
             value = f'{code} {weight}' if weight else code
             self.map_model.setData(start_map_index, value, Qt.EditRole)
         else:
-            # todo делать ли через df.values.flatten() self потом добавить до фулкоробки и reshape?
+            # todo вернуть итерацию по части карты? - будет ли быстрее?
             self.map_model.df = self.list_to_map()
+            # pass
 
     def __map_index_validate(self, index: QtCore.QModelIndex) -> bool:
         """ Validates map index according to list data """
@@ -83,8 +88,6 @@ class ShipmentModel:
                 array.extend([[''] * self.box_options.columns] * self.box_options.separator)
                 indexes.extend([''] * self.box_options.separator)
 
-        # if self.update_ui_func:
-        #     self.update_ui_func()
         return pd.DataFrame(array, index=indexes, columns=self.map_columns).fillna('')
 
     def load(self, df: pd.DataFrame):
@@ -94,7 +97,7 @@ class ShipmentModel:
             return 'ERROR! Cannot find one or more required columns in selected file!'
         df[settings.weight_column] = ''
         self.list_model.df = df[self.columns]
-        self.map_model.df = self.list_to_map()
+        # self.map_model.df = self.list_to_map()
 
     def item_position(self, row: int, column=None):
         """ Get item position in list/map by its indexes in map/list """

@@ -87,7 +87,7 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
             return False
         if role == Qt.EditRole:
             self._df.iloc[index.row(), index.column()] = value
-            self.dataChanged.emit(index, index, [Qt.DisplayRole])
+            self.dataChanged.emit(index, index, [role])
             return True
         return False
 
@@ -101,7 +101,11 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
         self.beginResetModel()
         self._df = value
         self.endResetModel()
-        self.dataChanged.emit(self.index(0, 0), self.index(self.df.shape[0] - 1, self.df.shape[1] - 1))
+        first_index = self.index(0, 0)
+        last_index = self.index(self._df.shape[0] - 1, self._df.shape[1] - 1)
+        self.dataChanged.emit(first_index, last_index, [Qt.DisplayRole])
+        self.layoutChanged.emit()
+        # self.dataChanged.emit(self.index(0, 0), self.index(self.df.shape[0] - 1, self.df.shape[1] - 1), [Qt.DisplayRole])
 
 
 # -------------------- Decorators --------------------

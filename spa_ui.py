@@ -62,9 +62,8 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         # bind events
         self.list_view.selectionModel().selectionChanged.connect(self.back_selection)
-        self.list_view.selectionModel().selectionChanged.connect(self.update_ui_labels)
-        self.list_view.model().dataChanged.connect(self.shipment.update_map_value)
         self.map_view.selectionModel().selectionChanged.connect(self.back_selection)
+        self.list_view.selectionModel().selectionChanged.connect(self.update_ui_labels)
         # self.list_view.setItemDelegate(ShipmentListDelegate())
 
         # setup components look - this takes too much resources
@@ -147,7 +146,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.status_bar.showMessage(f'Opening file "{filepath}"')
         file_df = pd.read_excel(filepath)
         self.shipment.load(file_df)
-        self.boxes_amount.setText(self.shipment.box_amount)
+        # self.boxes_amount.setText(self.shipment.box_amount)
         # get shipment number from path
         num = re.search(r'\d+', pathlib.Path(filepath).name)
         self.shipment_number.setText(num.group(0) if num else '')

@@ -1,4 +1,7 @@
 import re
+import timeit
+import typing
+
 import settings
 import pandas as pd
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -37,8 +40,9 @@ class ShipmentListView(QtWidgets.QTableView):
         super(ShipmentListView, self).keyPressEvent(e)
 
     def currentChanged(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex) -> None:
-        index = self.model().index(current.row(), self.model().weight_column_index)
-        self.setCurrentIndex(index)
+        if current.column() != previous.column():
+            index = self.model().index(current.row(), self.model().weight_column_index)
+            self.setCurrentIndex(index)
         super(ShipmentListView, self).currentChanged(current, previous)
 
     @validate_selection()
@@ -94,6 +98,8 @@ class ShipmentListView(QtWidgets.QTableView):
         if move_step:
             destination = self.model().index(selected.row() + move_step, selected.column())
             self.model().move_row_to(selected.row(), destination.row())
+            # flags = QtCore.QItemSelectionModel.ClearAndSelect | QtCore.QItemSelectionModel.Rows
+            # self.selectionModel().select(self.model().index(selected.row() + move_step, selected.column()), flags)
             self.selectRow(selected.row() + move_step)
             return True
         else:
@@ -168,12 +174,12 @@ class ShipmentListModel(AbstractDataFrameModel):
         destination_index = self.index(destination, 0)
         if not source_index.isValid() or not destination_index.isValid():
             return False
-
+        # new_index = [destination if i == source else source if i == destination else i
+        # for i in self.df.index.to_list()]
         index = self.df.index.to_list()
         item = index.pop(source)
         index.insert(destination, item)
-        self.df = self.df.reindex(index).reset_index(drop=True)
-        self.dataChanged.emit(source_index, destination_index, [Qt.DisplayRole])
+        self.df = self.df.reindex(index).reset_index(drop=True)         # slow point
         return True
 
     def insert_row_at(self, row: int, data: pd.Series):
