@@ -1,5 +1,3 @@
-import timeit
-
 import settings
 import pandas as pd
 import numpy as np
@@ -37,7 +35,7 @@ class ShipmentModel:
             If index is not specified rebuild map """
         # convert list indexes to map indexes
         start_map_index = self.item_position(start.row())
-        # end_map_index = self.item_position(end.row())
+        end_map_index = self.item_position(end.row())
 
         if start == end:
             # collect value
@@ -46,9 +44,27 @@ class ShipmentModel:
             value = f'{code} {weight}' if weight else code
             self.map_model.setData(start_map_index, value, Qt.EditRole)
         else:
-            # todo вернуть итерацию по части карты? - будет ли быстрее?
             self.map_model.df = self.list_to_map()
-            # pass
+        # todo вернуть итерацию по части карты? - будет ли быстрее?
+
+        # if not start_map_index.isValid() or not end_map_index.isValid():
+        #     self.map_model.df = self.list_to_map()
+        #     return
+        # #     # тут надо собирать карту - с индексами и прочей поеботой
+        # #
+        # self.map_model.beginResetModel()
+        # for row_number in range_generator(start.row(), end.row(), endpoint=True):
+        #     # collect info
+        #     weight = self.list_model.df.loc[row_number, settings.weight_column]
+        #     code = self.list_model.df.loc[row_number, settings.code_column]
+        #     value = f'{code} {weight}' if weight else code
+        #     # set data to map
+        #     map_index = self.item_position(row_number)
+        #     self.map_model.setData(map_index, value, Qt.EditRole)
+        # self.map_model.endResetModel()
+        # #
+        # #     # self.map_model.df = self.list_to_map()
+        # #     # pass
 
     def __map_index_validate(self, index: QtCore.QModelIndex) -> bool:
         """ Validates map index according to list data """
@@ -89,6 +105,39 @@ class ShipmentModel:
                 indexes.extend([''] * self.box_options.separator)
 
         return pd.DataFrame(array, index=indexes, columns=self.map_columns).fillna('')
+
+    # todo: coloring background separator and unfilled box place to different colors
+    # another variant, more understandable: todo export mode
+    # def list_to_map(self, export_mode=False) -> pd.DataFrame:
+    #     samples = self.list_model.df[settings.code_column].copy()
+    #     if not samples.size:
+    #         return pd.DataFrame(columns=self.map_columns)
+    #     weights = self.list_model.df[settings.weight_column]
+    #     weight_exists = weights != ''
+    #     samples.loc[weight_exists] += ' ' + weights.loc[weight_exists]
+    #     del weights
+    #
+    #     # fill list with zeroes to full boxes
+    #     samples = samples.values
+    #     box_capacity = self.box_options.rows * self.box_options.columns
+    #     if (delta_size := (box_capacity - samples.size % box_capacity) % box_capacity) > 0:
+    #         samples = np.append(samples, [''] * delta_size)
+    #
+    #     # collect map data with separators and export headers if required
+    #     map_data = np.empty((0, 9), dtype='str')
+    #     for i in range(0, samples.size, box_capacity):
+    #         box_data = samples[i:i + box_capacity].reshape((-1, self.box_options.columns))
+    #         if i + box_capacity <= samples.size:
+    #             separators = np.empty((self.box_options.separator, self.box_options.columns), dtype='str')
+    #             map_data = np.vstack((map_data, box_data, separators))
+    #         else:
+    #             map_data = np.vstack((map_data, box_data))
+    #     del samples
+    #
+    #     index = [i if (i := row % (self.box_options.rows + self.box_options.separator) + 1) <= self.box_options.rows
+    #              else '' for row in range(map_data.shape[0])]
+    #
+    #     return pd.DataFrame(map_data, columns=self.map_columns, index=index)
 
     def load(self, df: pd.DataFrame):
         """ Load shipment list from DataFrame and build shipment map """

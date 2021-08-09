@@ -104,8 +104,6 @@ class AbstractDataFrameModel(QtCore.QAbstractTableModel):
         first_index = self.index(0, 0)
         last_index = self.index(self._df.shape[0] - 1, self._df.shape[1] - 1)
         self.dataChanged.emit(first_index, last_index, [Qt.DisplayRole])
-        self.layoutChanged.emit()
-        # self.dataChanged.emit(self.index(0, 0), self.index(self.df.shape[0] - 1, self.df.shape[1] - 1), [Qt.DisplayRole])
 
 
 # -------------------- Decorators --------------------
