@@ -3,17 +3,18 @@ import typing
 import pandas as pd
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.Qt import Qt
-from additional import AbstractDataFrameModel, range_generator
+from additional import AbstractDataFrameModel, range_generator, PositionStatus
 
 
 # -------------------- QTableView --------------------
 class ShipmentMapView(QtWidgets.QTableView):
     def selectionCommand(self, index: QtCore.QModelIndex, event: typing.Optional[QtCore.QEvent] = ...) \
             -> QtCore.QItemSelectionModel.SelectionFlags:
-        if not self.model().index_validate(index):
-            return QtCore.QItemSelectionModel.SelectionFlags(QtCore.QItemSelectionModel.Deselect)
-        else:
+        pos_status = self.model().position_status_func(index)
+        if (pos_status == PositionStatus.PACKED_SAMPLE) or (pos_status == PositionStatus.UNPACKED_SAMPLE):
             return super(ShipmentMapView, self).selectionCommand(index, event)
+        else:
+            return QtCore.QItemSelectionModel.SelectionFlags(QtCore.QItemSelectionModel.Deselect)
 
     def dataChanged(self, topLeft: QtCore.QModelIndex, bottomRight: QtCore.QModelIndex,
                     roles: typing.Iterable[int] = ...) -> None:
@@ -25,11 +26,11 @@ class ShipmentMapView(QtWidgets.QTableView):
 # -------------------- QAbstractTableModel --------------------
 class ShipmentMapModel(AbstractDataFrameModel):
     """ Model for shipment map """
-    def __init__(self, df: pd.DataFrame, index_validate: typing.Callable):
+    def __init__(self, df: pd.DataFrame, position_status_func: typing.Callable):
         """ :param index_validate(index: QModelIndex) -> bool
                 function for validating indexes according to ListModel """
         super(ShipmentMapModel, self).__init__(df)
-        self.index_validate = index_validate
+        self.position_status_func = position_status_func
 
     def data(self, index: QtCore.QModelIndex, role=Qt.DisplayRole):
         if not index.isValid():
@@ -41,10 +42,14 @@ class ShipmentMapModel(AbstractDataFrameModel):
         elif role == Qt.TextWordWrap:
             return True
         elif role == Qt.BackgroundColorRole:
-            if self.index_validate(index):
-                return QtGui.QColor(*settings.color_packed) \
-                    if self.data(index).find(' ') > 0 else QtGui.QColor(*settings.color_unpacked)
-            else:
-                return QtGui.QColor(*settings.color_na)
+            pos_status = self.position_status_func(index)
+            if pos_status == PositionStatus.PACKED_SAMPLE:
+                return QtGui.QColor(*settings.color_packed)
+            elif pos_status == PositionStatus.UNPACKED_SAMPLE:
+                return QtGui.QColor(*settings.color_unpacked)
+            elif pos_status == PositionStatus.FREE:
+                return QtGui.QColor(*settings.color_free)
+            elif pos_status == PositionStatus.SEPARATOR:
+                return QtGui.QColor(*settings.color_separator)
         # if role == Qt.FontRole:
         #     return QFont('Courier New')

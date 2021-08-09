@@ -1,4 +1,5 @@
 import enum
+import timeit
 import typing
 from functools import wraps
 
@@ -30,7 +31,7 @@ def range_generator(start: int, stop: int, step: int = 1, endpoint=False):
             result += step
 
 
-# -------------------- ItemSelection --------------------
+# -------------------- Enumerations --------------------
 class ItemSelection(enum.Enum):
     # selection constants
     CLEAR = 0
@@ -49,6 +50,13 @@ class ItemSelection(enum.Enum):
 class Direction(tuple):
     BACKWARD = (0, 1)
     FORWARD = (1, 0)
+
+
+class PositionStatus(int):
+    SEPARATOR = 0
+    UNPACKED_SAMPLE = 1
+    PACKED_SAMPLE = 2
+    FREE = 3
 
 
 # -------------------- QAbstractTableModel --------------------
