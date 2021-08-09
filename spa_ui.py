@@ -9,7 +9,7 @@ from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from PyQt5.Qt import Qt
 from PyQt5.QtWidgets import QFileDialog, QHeaderView
 
-from additional import ItemSelection, validate_selection, range_generator
+from additional import ItemSelection, validate_selection
 from shipment_list import ShipmentListView
 from shipment_model import ShipmentModel
 
@@ -67,7 +67,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         # self.list_view.setItemDelegate(ShipmentListDelegate())
 
         # setup components look - this takes too much resources
-        # NOTE: THIS IS THE REASON OF UI LAGS
+        # NOTE: IT MAY BE THE REASON OF UI LAGS
         self.list_view.verticalHeader().setDefaultSectionSize(20)
         self.list_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.list_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -146,7 +146,6 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.status_bar.showMessage(f'Opening file "{filepath}"')
         file_df = pd.read_excel(filepath)
         self.shipment.load(file_df)
-        # self.boxes_amount.setText(self.shipment.box_amount)
         # get shipment number from path
         num = re.search(r'\d+', pathlib.Path(filepath).name)
         self.shipment_number.setText(num.group(0) if num else '')
@@ -173,39 +172,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             print(filepath)
         else:
             filepath = f'Map {self.shipment.number}.xls'
-        sheet_name = f'Map {self.shipment.number}'
-
-        writer = pd.ExcelWriter(filepath, engine='xlsxwriter')
-        data = self.shipment.list_to_map(export_mode=True).reset_index()
-        data.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
-        # create styles
-        workbook = writer.book
-        header_style = workbook.add_format(settings.export_style_headers)
-        cell_style = workbook.add_format(settings.export_style_cells)
-        border_style = workbook.add_format(settings.export_style_border)
-
-        sheet = writer.sheets[sheet_name]
-        # set column header style
-        sheet.set_column(0, 0, cell_format=header_style)
-        # set common style
-        sheet.set_column(1, self.shipment.box_options.columns, width=12, cell_format=cell_style)
-        sheet.set_default_row(30)
-
-        # iterate through blocks: set borders and box headers
-        for block in range_generator(0, int(self.shipment.box_amount)):
-            first_row = (2 + self.shipment.box_options.columns + self.shipment.box_options.separator) * block
-            last_row = first_row + self.shipment.box_options.rows + 1
-            first_col = 0
-            last_col = self.shipment.box_options.columns
-            # set box header style
-            sheet.set_row(first_row, cell_format=header_style)
-            sheet.set_row(first_row + 1, cell_format=header_style)
-            # set borders
-            sheet.conditional_format(first_row, first_col, first_row + 1, last_col,
-                                     {'type': 'no_blanks', 'format': border_style})
-            sheet.conditional_format(first_row + 2, first_col, last_row, last_col,
-                                     {'type': 'no_errors', 'format': border_style})
-        writer.save()
+        self.shipment.save(filepath)
         self.status_bar.showMessage(f'File saved "{filepath}"')
 
     def insert_action(self, add_modifiers=None):
@@ -222,10 +189,6 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         # откуда тут в args берется False?
         pass
         # self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
-        # self.select(ItemSelection.PREVIOUS)
-        # cur_row = self.list_view.selectedIndexes()[0]
-        # next_row = self.shipment.list_model.index(cur_row.row() - 1, cur_row.column())
-        # self.shipment.move_row(cur_row, next_row)
 
 
 # start GUI

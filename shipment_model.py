@@ -35,7 +35,7 @@ class ShipmentModel:
             If index is not specified rebuild map """
         # convert list indexes to map indexes
         start_map_index = self.item_position(first_index.row())
-        end_map_index = self.item_position(last_index.row())
+        # end_map_index = self.item_position(last_index.row())
 
         if first_index == last_index:
             # collect value
@@ -45,25 +45,25 @@ class ShipmentModel:
             self.map_model.setData(start_map_index, value, Qt.EditRole)
         else:
             self.map_model.df = self.list_to_map()
-        # todo вернуть итерацию по части карты? - будет ли быстрее?
+
+        # это бесполезно до тех пор, пока у меня move/insert/remove изменяют целиком df
         # if not start_map_index.isValid() or not end_map_index.isValid():
         #     self.map_model.df = self.list_to_map()
         #     return
-        # #     # тут надо собирать карту - с индексами и прочей поеботой
-        # #
-        # self.map_model.beginResetModel()
-        # for row_number in range_generator(start.row(), end.row(), endpoint=True):
-        #     # collect info
-        #     weight = self.list_model.df.loc[row_number, settings.weight_column]
-        #     code = self.list_model.df.loc[row_number, settings.code_column]
-        #     value = f'{code} {weight}' if weight else code
-        #     # set data to map
-        #     map_index = self.item_position(row_number)
-        #     self.map_model.setData(map_index, value, Qt.EditRole)
-        # self.map_model.endResetModel()
-        # #
-        # #     # self.map_model.df = self.list_to_map()
-        # #     # pass
+        # elif (last_index.row() - first_index.row()) <= self.box_options.columns:
+        #     # if max 9 items need to be updated
+        #     self.map_model.beginResetModel()
+        #     for row_number in range_generator(first_index.row(), last_index.row(), endpoint=True):
+        #         # collect info
+        #         weight = self.list_model.df.loc[row_number, settings.weight_column]
+        #         code = self.list_model.df.loc[row_number, settings.code_column]
+        #         value = f'{code} {weight}' if weight else code
+        #         # set data to map
+        #         map_index = self.item_position(row_number)
+        #         self.map_model.setData(map_index, value, Qt.EditRole)
+        #     self.map_model.endResetModel()
+        # else:
+        #     self.map_model.df = self.list_to_map()
 
     def get_position_status(self, map_index: QtCore.QModelIndex) -> PositionStatus:
         """ Determine whether index refers to sample, free box place or separator """
@@ -75,6 +75,26 @@ class ShipmentModel:
             return PositionStatus.FREE
         else:
             return PositionStatus.SEPARATOR
+
+    def item_position(self, row: int, column=None):
+        """ Get item position in list/map by its indexes in map/list """
+        box_capacity = self.box_options.rows * self.box_options.columns
+        if column is not None:      # find in list by map indexes
+            full_boxes = row // (self.box_options.rows + self.box_options.separator)
+            row_in_box = row % (self.box_options.rows + self.box_options.separator)
+            index = (full_boxes * box_capacity + row_in_box * self.box_options.columns + column, 0)
+            return self.list_model.index(*index) if row_in_box < self.box_options.rows else QtCore.QModelIndex()
+        else:                       # find in map by list index
+            full_boxes = row // box_capacity
+            row_in_map = (row // self.box_options.columns) + self.box_options.separator * full_boxes
+            col_in_map = row % self.box_options.columns
+            return self.map_model.index(row_in_map, col_in_map)
+
+    def set_weight(self, index: int, weight: str):
+        """ Set weight to item by its index in list """
+        # create QModelIndex
+        list_index = self.list_model.index(index, self.list_model.weight_column_index)
+        self.list_model.setData(list_index, weight, Qt.EditRole)
 
     @property
     def box_amount(self):
@@ -164,22 +184,37 @@ class ShipmentModel:
         df[settings.weight_column] = ''
         self.list_model.df = df[self.columns]
 
-    def item_position(self, row: int, column=None):
-        """ Get item position in list/map by its indexes in map/list """
-        box_capacity = self.box_options.rows * self.box_options.columns
-        if column is not None:      # find in list by map indexes
-            full_boxes = row // (self.box_options.rows + self.box_options.separator)
-            row_in_box = row % (self.box_options.rows + self.box_options.separator)
-            index = (full_boxes * box_capacity + row_in_box * self.box_options.columns + column, 0)
-            return self.list_model.index(*index) if row_in_box < self.box_options.rows else QtCore.QModelIndex()
-        else:                       # find in map by list index
-            full_boxes = row // box_capacity
-            row_in_map = (row // self.box_options.columns) + self.box_options.separator * full_boxes
-            col_in_map = row % self.box_options.columns
-            return self.map_model.index(row_in_map, col_in_map)
+    def save(self, filepath):
+        sheet_name = f'Map {self.number}'
 
-    def set_weight(self, index: int, weight: str):
-        """ Set weight to item by its index in list """
-        # create QModelIndex
-        list_index = self.list_model.index(index, self.list_model.weight_column_index)
-        self.list_model.setData(list_index, weight, Qt.EditRole)
+        writer = pd.ExcelWriter(filepath, engine='xlsxwriter')
+        data = self.list_to_map(export_mode=True).reset_index()
+        data.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
+        # create styles
+        workbook = writer.book
+        header_style = workbook.add_format(settings.export_style_headers)
+        cell_style = workbook.add_format(settings.export_style_cells)
+        border_style = workbook.add_format(settings.export_style_border)
+
+        sheet = writer.sheets[sheet_name]
+        # set column header style
+        sheet.set_column(0, 0, cell_format=header_style)
+        # set common style
+        sheet.set_column(1, self.box_options.columns, width=12, cell_format=cell_style)
+        sheet.set_default_row(30)
+
+        # iterate through blocks: set borders and box headers
+        for block in range_generator(0, int(self.box_amount)):
+            first_row = (2 + self.box_options.columns + self.box_options.separator) * block
+            last_row = first_row + self.box_options.rows + 1
+            first_col = 0
+            last_col = self.box_options.columns
+            # set box header style
+            sheet.set_row(first_row, cell_format=header_style)
+            sheet.set_row(first_row + 1, cell_format=header_style)
+            # set borders
+            sheet.conditional_format(first_row, first_col, first_row + 1, last_col,
+                                     {'type': 'no_blanks', 'format': border_style})
+            sheet.conditional_format(first_row + 2, first_col, last_row, last_col,
+                                     {'type': 'no_errors', 'format': border_style})
+        writer.save()

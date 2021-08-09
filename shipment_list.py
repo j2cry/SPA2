@@ -1,7 +1,4 @@
 import re
-import timeit
-import typing
-
 import settings
 import pandas as pd
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -55,14 +52,14 @@ class ShipmentListView(QtWidgets.QTableView):
         start_pos, end_pos = None, None
 
         # find positions
-        current_pos = current_sample[['st0', 'st1', 'st2', 'st3', 'st4']].values
+        current_pos = current_sample[settings.position_columns].values
         condition = self.model().df[settings.code_column].str.match(sample_number)
         data = self.model().df.loc[condition, :]
         if not data.shape[0]:
             data = pd.DataFrame(current_sample).T
         if set(settings.default_columns).issubset(data.columns):
-            start_pos = data.iloc[0][['st0', 'st1', 'st2', 'st3', 'st4']].values
-            end_pos = data.iloc[-1][['st0', 'st1', 'st2', 'st3', 'st4']].values
+            start_pos = data.iloc[0][settings.position_columns].values
+            end_pos = data.iloc[-1][settings.position_columns].values
 
         if not sample_number:
             return SampleInfo(sample_code, '.'.join(current_pos.astype('str')), '.'.join(end_pos.astype('str')), True)
