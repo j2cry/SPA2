@@ -408,7 +408,7 @@
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hold SHIFT to insert BEFORE selection.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
-         <string>Insert row</string>
+         <string>Insert</string>
         </property>
         <property name="icon">
          <iconset>
@@ -419,7 +419,7 @@
       <item>
        <widget class="QPushButton" name="remove_button">
         <property name="text">
-         <string>Remove row</string>
+         <string>Remove</string>
         </property>
         <property name="icon">
          <iconset>
