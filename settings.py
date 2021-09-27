@@ -1,3 +1,5 @@
+from additional import ItemSelection
+
 """ Default settings """
 
 default_box_options = {'rows': 9,
@@ -38,4 +40,33 @@ export_style_cells = {
     **export_style_common,
     'font': 'Courier New',
     'text_wrap': True,
+}
+
+use_model = 'model-ru'
+
+acceptable_words = {
+    'ноль':         '0',
+    'один':         '1',
+    'два':          '2',
+    'три':          '3',
+    'четыре':       '4',
+    'пять':         '5',
+    'шесть':        '6',
+    'восемь':       '8',
+    'семь':         '7',
+    'девять':       '9',
+
+    'двадцать ':    '2',
+    'тридцать ':    '3',
+    'сорок ':       '4',
+    'десят ':       '',
+    'дцать':        '',
+    'и ':           '',
+    'утка':         'Не надо недооценивать силу утки!',
+}
+
+acceptable_commands = {
+    'назад':    ItemSelection.PREVIOUS,
+    'дальше':   ItemSelection.NEXT,
+    'конец': -1,
 }

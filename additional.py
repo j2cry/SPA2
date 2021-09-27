@@ -1,5 +1,4 @@
 import enum
-import timeit
 import typing
 from functools import wraps
 

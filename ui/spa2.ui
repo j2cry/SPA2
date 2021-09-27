@@ -285,7 +285,11 @@
          </sizepolicy>
         </property>
         <property name="text">
-         <string>start</string>
+         <string>Start</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>../resources/start.svg</normaloff>../resources/start.svg</iconset>
         </property>
        </widget>
       </item>

@@ -12,12 +12,13 @@ from PyQt5.QtWidgets import QFileDialog, QHeaderView
 from additional import ItemSelection, validate_selection
 from shipment_list import ShipmentListView
 from shipment_model import ShipmentModel
+from recognizer import Recognizer
 
 
 class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
     def __init__(self):
         super(ShipmentPackingAssistantUI, self).__init__()
-        uic.loadUi('ui/spa2.ui', self)
+        uic.loadUi(pathlib.Path().joinpath('ui', 'spa2.ui'), self)
         # general settings
         self.font = QtGui.QFont('Courier New')
         self.recursion_depth = 0
@@ -58,7 +59,7 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.remove_button.clicked.connect(self.remove_action)
         self.import_button.clicked.connect(self.import_shipment)
         self.export_button.clicked.connect(self.export_map)
-        self.work_button.clicked.connect(self.debug_action)
+        self.work_button.clicked.connect(self.work_action)
 
         # bind events
         self.list_view.selectionModel().selectionChanged.connect(self.back_selection)
@@ -74,8 +75,16 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         self.map_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.map_view.setFont(self.font)
 
+        self.rec_thread = Recognizer(self.apply_rec_result)
+        self.rec_thread.start()
+        self.list_view.switch_selection.connect(self.select)
+
         # show form
         self.show()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.rec_thread.stop()
+        self.rec_thread.join()
 
     def show_insert_popup(self):
         """ Show popup menu """
@@ -184,11 +193,40 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         """ Remove selected row from shipment list """
         self.list_view.remove_row()
 
+    def work_action(self):
+        """ Start/stop recognizer thread"""
+        if self.shipment.list_model.rowCount() == 0:
+            self.status_bar.showMessage(f'No data for processing!')
+            return
+        self.rec_thread.switch_pause()
+
+        if self.rec_thread.suspended:
+            self.status_bar.showMessage(f'Recognizer suspended!')
+            self.work_button.setText('start')
+            self.work_button.setIcon(QtGui.QIcon(pathlib.Path().joinpath('resources', 'start.svg').as_posix()))
+        else:
+            self.status_bar.showMessage(f'Recognizer started!')
+            self.work_button.setText('pause')
+            self.work_button.setIcon(QtGui.QIcon(pathlib.Path().joinpath('resources', 'pause.svg').as_posix()))
+
+    def apply_rec_result(self, data, command: bool):
+        """ Post-Process the recognized value or run voice command """
+        if command:
+            if data == -1:
+                self.rec_thread.switch_pause()
+                self.status_bar.showMessage(f'Recognizer suspended!')
+                self.work_button.setText('start')
+                self.work_button.setIcon(QtGui.QIcon(pathlib.Path().joinpath('resources', 'start.svg').as_posix()))
+            else:
+                self.list_view.switch_selection.emit(data)
+        else:
+            self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), data)
+            self.list_view.switch_selection.emit(ItemSelection.NEXT)
+
     @validate_selection('list_view')
     def debug_action(self, *args, selected=None, **kwargs):
         # откуда тут в args берется False?
         pass
-        # self.shipment.set_weight(self.list_view.selectedIndexes()[0].row(), '0.55')
 
 
 # start GUI

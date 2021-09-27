@@ -3,11 +3,13 @@ import settings
 import pandas as pd
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import Qt
-from additional import AbstractDataFrameModel, Direction, validate_selection, SampleInfo
+from additional import AbstractDataFrameModel, Direction, validate_selection, SampleInfo, ItemSelection
 
 
 # -------------------- QTableView --------------------
 class ShipmentListView(QtWidgets.QTableView):
+    switch_selection = QtCore.pyqtSignal(ItemSelection)
+
     def keyPressEvent(self, e: QtGui.QKeyEvent) -> None:
         selected = self.selectedIndexes()[0] if self.selectedIndexes() else None
 
