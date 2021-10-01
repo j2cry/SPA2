@@ -1,6 +1,9 @@
+import pathlib
+
 from additional import ItemSelection
 
 """ Default settings """
+save_path = pathlib.Path().home().joinpath('Рабочий стол')
 
 default_box_options = {'rows': 9,
                        'columns': 9,
@@ -19,7 +22,7 @@ move_step = (1, default_box_options['columns'])             # default steps for 
 insert_many = default_box_options['columns']                # default rows amount for multi-insertion
 
 # export parameters
-
+column_width = 16
 # export Excel styles
 export_style_border = {
     'border': 1,

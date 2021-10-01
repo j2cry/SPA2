@@ -169,18 +169,19 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         if (int(modifiers) & Qt.ShiftModifier) == Qt.ShiftModifier:
             dialog = QtWidgets.QFileDialog(caption='Export shipment map',
-                                           filter='Excel files (*.xls *.xlsx);;')
+                                           filter='Excel files (*.xlsx);;')
             dialog.setFileMode(QFileDialog.AnyFile)
             dialog.setAcceptMode(QFileDialog.AcceptSave)
             if not dialog.exec():
                 self.status_bar.showMessage(f'File was not selected.')
                 return
             filepath = dialog.selectedFiles()[0]
-            if not filepath.endswith('.xls') and not filepath.endswith('.xlsx'):
-                filepath += '.xls'
-            print(filepath)
+            if filepath.endswith('.xls'):
+                filepath += 'x'
+            elif not filepath.endswith('.xlsx'):
+                filepath += '.xlsx'
         else:
-            filepath = f'Map {self.shipment.number}.xls'
+            filepath = settings.save_path.joinpath(f'Map {self.shipment.number}.xlsx')
         self.shipment.save(filepath)
         self.status_bar.showMessage(f'File saved "{filepath}"')
 

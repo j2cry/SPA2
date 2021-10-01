@@ -200,7 +200,7 @@ class ShipmentModel:
         # set column header style
         sheet.set_column(0, 0, cell_format=header_style)
         # set common style
-        sheet.set_column(1, self.box_options.columns, width=12, cell_format=cell_style)
+        sheet.set_column(1, self.box_options.columns, width=settings.column_width, cell_format=cell_style)
         sheet.set_default_row(30)
 
         # iterate through blocks: set borders and box headers

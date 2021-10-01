@@ -74,7 +74,7 @@ class Recognizer(Thread):
         # print(data)
         try:
             result = float(data)
-            self.callback(data, False)
+            self.callback(str(result), False)
         except ValueError:
             if data in settings.acceptable_commands.keys():
                 self.callback(settings.acceptable_commands[data], True)

@@ -10,6 +10,8 @@ from additional import AbstractDataFrameModel, range_generator, PositionStatus
 class ShipmentMapView(QtWidgets.QTableView):
     def selectionCommand(self, index: QtCore.QModelIndex, event: typing.Optional[QtCore.QEvent] = ...) \
             -> QtCore.QItemSelectionModel.SelectionFlags:
+        if not index.isValid():
+            return super(ShipmentMapView, self).selectionCommand(index, event)
         pos_status = self.model().position_status_func(index)
         if (pos_status == PositionStatus.PACKED_SAMPLE) or (pos_status == PositionStatus.UNPACKED_SAMPLE):
             return super(ShipmentMapView, self).selectionCommand(index, event)
