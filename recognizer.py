@@ -67,6 +67,10 @@ class Recognizer(Thread):
         """ Interpret the recognized text to float value or command and callback """
         if not data:
             return
+        if data == 'утка':
+            self.callback(settings.acceptable_words[data], False)
+            return
+
         for key, value in settings.acceptable_words.items():
             data = data.replace(key, value)
 

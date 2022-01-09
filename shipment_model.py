@@ -187,7 +187,7 @@ class ShipmentModel:
     def save(self, filepath):
         sheet_name = f'Map {self.number}'
 
-        writer = pd.ExcelWriter(filepath, engine='xlsxwriter')
+        writer = pd.ExcelWriter(filepath, engine='xlsxwriter')      # xlsxwriter supports Excel formats
         data = self.list_to_map(export_mode=True).reset_index()
         data.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
         # create styles

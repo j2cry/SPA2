@@ -41,12 +41,12 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
 
         # create insert popup
         self.insert_popup = QtWidgets.QMenu(self)
-        one_row_insert = QtWidgets.QAction('1 row', self)
-        one_row_insert.triggered.connect(self.insert_action)
-        multi_insert = QtWidgets.QAction(f'{settings.default_box_options.get("columns")} rows', self)
+        one_item_insert = QtWidgets.QAction('1 item', self)
+        one_item_insert.triggered.connect(self.insert_action)
+        multi_insert = QtWidgets.QAction(f'{settings.default_box_options.get("columns")} items', self)
         multi_insert.triggered.connect(partial(self.insert_action, Qt.AltModifier))
 
-        self.insert_popup.addAction(one_row_insert)
+        self.insert_popup.addAction(one_item_insert)
         self.insert_popup.addAction(multi_insert)
         # initialize models for tables
         self.shipment = ShipmentModel()
@@ -166,6 +166,11 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
             self.status_bar.showMessage(f'No data to export!')
             return
 
+        if not self.shipment.number:
+            self.status_bar.showMessage(f'Specify the shipment number!')
+            self.shipment_number.setFocus()
+            return
+
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         if (int(modifiers) & Qt.ShiftModifier) == Qt.ShiftModifier:
             dialog = QtWidgets.QFileDialog(caption='Export shipment map',
@@ -182,7 +187,11 @@ class ShipmentPackingAssistantUI(QtWidgets.QMainWindow):
                 filepath += '.xlsx'
         else:
             filepath = settings.save_path.joinpath(f'Map {self.shipment.number}.xlsx')
-        self.shipment.save(filepath)
+        try:
+            self.shipment.save(filepath)
+        except IOError as e:
+            self.status_bar.showMessage(e)
+            return
         self.status_bar.showMessage(f'File saved "{filepath}"')
 
     def insert_action(self, add_modifiers=None):
