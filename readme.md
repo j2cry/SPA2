@@ -1,9 +1,9 @@
 Hotkeys for shipment list edit:
 
 1. Navigation & Moving:
-    hold SHIFT:         to move row
-    UP/DOWN:            up/down by 1 row
-    ALT + UP/DOWN:      up/down by as many rows as there are columns in the box
+    hold SHIFT:         to move item
+    UP/DOWN:            up/down by 1 item
+    ALT + UP/DOWN:      up/down by 1 row
     CTRL + UP/DOWN:     up/down to the top/bottom of the list
 
 2. Inserting
